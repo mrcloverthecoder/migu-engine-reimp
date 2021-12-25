@@ -1,0 +1,38 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.31727.386
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MiguLibrary", "MiguLibrary\MiguLibrary.csproj", "{31641E0D-768C-4B5F-BAF1-4B516819C920}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "MiguLibrary.Tests", "MiguLibrary.Tests", "{52C9E5A4-99FE-41D2-A608-F64DA8AF3334}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Apps", "Apps", "{27D9F064-1439-4224-978A-D6DF28D007F1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MiguModelViewer", "MiguLibrary.Tests\MiguModelViewer\MiguModelViewer.csproj", "{65EF295A-F39D-4A59-ACB4-EDD3F3656775}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{31641E0D-768C-4B5F-BAF1-4B516819C920}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{31641E0D-768C-4B5F-BAF1-4B516819C920}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{31641E0D-768C-4B5F-BAF1-4B516819C920}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{31641E0D-768C-4B5F-BAF1-4B516819C920}.Release|Any CPU.Build.0 = Release|Any CPU
+		{65EF295A-F39D-4A59-ACB4-EDD3F3656775}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{65EF295A-F39D-4A59-ACB4-EDD3F3656775}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{65EF295A-F39D-4A59-ACB4-EDD3F3656775}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{65EF295A-F39D-4A59-ACB4-EDD3F3656775}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{65EF295A-F39D-4A59-ACB4-EDD3F3656775} = {52C9E5A4-99FE-41D2-A608-F64DA8AF3334}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {16E80F0A-DA47-4A75-AD75-64ABB2BCAAE5}
+	EndGlobalSection
+EndGlobal

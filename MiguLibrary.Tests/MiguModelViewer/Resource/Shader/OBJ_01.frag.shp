@@ -1,0 +1,26 @@
+#version 330
+
+struct Material
+{
+	sampler2D DiffuseTexture;
+	vec4 Diffuse;
+	vec4 Ambient;
+	vec4 Specular;
+};
+
+out vec4 Color;
+
+in vec3 fNormal;
+in vec2 fTexCoord;
+in vec4 fColor;
+
+uniform Material uMaterial;
+
+void main(void)
+{
+	vec4 mColor = texture(uMaterial.DiffuseTexture, fTexCoord);
+	if(mColor.w < 0.01)
+		discard;
+	
+	Color = mColor;
+}
