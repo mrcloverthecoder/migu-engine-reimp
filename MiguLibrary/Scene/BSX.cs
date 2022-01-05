@@ -35,7 +35,6 @@ namespace MiguLibrary.Scene
 
             while (motionCount > 0 || objectCount > 0)
             {
-                Console.WriteLine("a");
                 FileEntry entry = new FileEntry();
 
                 entry.Name = reader.ReadString(StringBinaryFormat.FixedLength, 0x40).ToUpper();
@@ -54,14 +53,25 @@ namespace MiguLibrary.Scene
 
                 if (entry.Filename.EndsWith(".BMD"))
                 {
-                    Console.WriteLine("b");
-                    reader.SeekCurrent(0xD0);
+                    // Skip unknown data
+                    reader.SeekCurrent(0xC8);
+
+                    int animationCutCount = reader.ReadInt32();
+                    if (animationCutCount == 0)
+                        reader.SeekCurrent(4);
+
+                    entry.Cuts = new SceneAnimationCut[animationCutCount];
+                    for(int i = 0; i < animationCutCount; i++)
+                    {
+                        entry.Cuts[i] = SceneAnimationCut.Read(reader);
+                    }
+
                     objs.Add(entry);
                     objectCount--;
                 }
                 else if (entry.Filename.EndsWith(".BMM"))
                 {
-                    Console.WriteLine("c");
+                    // Skip unknown data
                     reader.SeekCurrent(0x58);
                     mots.Add(entry);
                     motionCount--;
@@ -92,5 +102,6 @@ namespace MiguLibrary.Scene
         public string Name;
         public string Path;
         public string Filename;
+        public SceneAnimationCut[] Cuts;
     }
 }

@@ -21,14 +21,14 @@ namespace MiguModelViewer.Renderer
         public GLMaterial Material;
 
         // This is used to select the bones to be sent to the render function by GLObjectData
-        internal int[] mBoneIndices;
+        internal float[] mBoneIndices;
         internal float[] mBoneWeights;
 
         private bool mDisposed = false;
 
         public GLVertexSet(VertexSet vertSet, FaceSet faceSet, GLMaterial mat)
         {
-            mBoneIndices = new int[vertSet.BoneInfluences.Length * 4];
+            mBoneIndices = new float[vertSet.BoneInfluences.Length * 4];
             mBoneWeights = new float[vertSet.BoneInfluences.Length * 4];
 
             int pos = 0;
@@ -73,24 +73,24 @@ namespace MiguModelViewer.Renderer
                 }*/
 
                 if (faceSet.BoneIndices.Length > influence.Bone0)
-                    mBoneIndices[pos] = faceSet.BoneIndices[influence.Bone0];
+                    mBoneIndices[pos] = (float)faceSet.BoneIndices[influence.Bone0];
                 else
-                    mBoneIndices[pos] = 0;
+                    mBoneIndices[pos] = 0.0f;
 
                 if (faceSet.BoneIndices.Length > influence.Bone1)
-                    mBoneIndices[pos + 1] = faceSet.BoneIndices[influence.Bone1];
+                    mBoneIndices[pos + 1] = (float)faceSet.BoneIndices[influence.Bone1];
                 else
-                    mBoneIndices[pos + 1] = 0;
+                    mBoneIndices[pos + 1] = 0.0f;
 
                 if (faceSet.BoneIndices.Length > influence.Bone2)
-                    mBoneIndices[pos + 2] = faceSet.BoneIndices[influence.Bone2];
+                    mBoneIndices[pos + 2] = (float)faceSet.BoneIndices[influence.Bone2];
                 else
-                    mBoneIndices[pos + 2] = 0;
+                    mBoneIndices[pos + 2] = 0.0f;
 
                 if (faceSet.BoneIndices.Length > influence.Bone3)
-                    mBoneIndices[pos + 3] = faceSet.BoneIndices[influence.Bone3];
+                    mBoneIndices[pos + 3] = (float)faceSet.BoneIndices[influence.Bone3];
                 else
-                    mBoneIndices[pos + 3] = 0;
+                    mBoneIndices[pos + 3] = 0.0f;
 
 
 
@@ -157,10 +157,14 @@ namespace MiguModelViewer.Renderer
 
             BoneIndicesBuffer = GL.GenBuffer();
             GL.BindBuffer(BufferTarget.ArrayBuffer, BoneIndicesBuffer);
-            GL.BufferData(BufferTarget.ArrayBuffer, mBoneIndices.Length * sizeof(int), mBoneIndices, BufferUsageHint.StaticDraw);
+            GL.BufferData(BufferTarget.ArrayBuffer, mBoneIndices.Length * sizeof(float), mBoneIndices, BufferUsageHint.StaticDraw);
 
-            GL.VertexAttribPointer(4, 4, VertexAttribPointerType.Int, false, 4 * sizeof(int), 0);
+            //Console.WriteLine($"Buffer Errors: {GL.GetError()}");
+
+            GL.VertexAttribPointer(4, 4, VertexAttribPointerType.Float, false, 4 * sizeof(float), 0);
             GL.EnableVertexAttribArray(4);
+
+            //Console.WriteLine($"Binding Errors: {GL.GetError()}");
 
             BoneWeightsBuffer = GL.GenBuffer();
             GL.BindBuffer(BufferTarget.ArrayBuffer, BoneWeightsBuffer);

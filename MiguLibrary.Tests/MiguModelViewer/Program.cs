@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using MiguLibrary.IO;
 
 namespace MiguModelViewer
 {
@@ -17,6 +18,7 @@ namespace MiguModelViewer
             Config.DataPath = cfgLines[0];
             int width = int.Parse(cfgLines[2].Split('x')[0]);
             int height = int.Parse(cfgLines[2].Split('x')[1]);
+            float framerate = Utils.ParseFloatEx(cfgLines[3]);
 
             if (args.Length > 0)
             {
@@ -25,12 +27,13 @@ namespace MiguModelViewer
 
             Config.Width = (float)width;
             Config.Height = (float)height;
+            Config.Framerate = framerate;
 
             Cache.ReadTextureAlphaCache();
 
-            using(Window w = new Window(width, height, "MiguModelViewer"))
+            using (Window w = new Window(width, height, "MiguModelViewer"))
             {
-                w.Run(30.0);
+                w.Run(framerate);
             }
         }
     }

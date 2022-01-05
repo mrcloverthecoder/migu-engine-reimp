@@ -17,6 +17,23 @@ namespace MiguModelViewer.Renderer
 
         private bool mDisposed = false;
 
+        public GLTexture(int width, int height, IntPtr pointer)
+        {
+            Id = GL.GenTexture();
+
+            GL.BindTexture(TextureTarget.Texture2D, Id);
+
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Linear);
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Linear);
+
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)TextureWrapMode.Repeat);
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)TextureWrapMode.Repeat);
+
+            GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgba, width, height, 0, PixelFormat.Bgra, PixelType.UnsignedByte, pointer);
+
+            GL.GenerateMipmap(GenerateMipmapTarget.Texture2D);
+        }
+
         public GLTexture(int width, int height, GimPixelFormat format, byte[] data)
         {
             Id = GL.GenTexture();
@@ -37,7 +54,7 @@ namespace MiguModelViewer.Renderer
             GL.GenerateMipmap(GenerateMipmapTarget.Texture2D);
         }
 
-        public GLTexture(string path, bool flip = true)
+        public GLTexture(string path, bool flip = false)
         {
             Bitmap bitmap = new Bitmap(path);
             if(flip)
@@ -50,8 +67,8 @@ namespace MiguModelViewer.Renderer
             GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Linear);
             GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Linear);
 
-            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)TextureWrapMode.ClampToEdge);
-            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)TextureWrapMode.ClampToEdge);
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)TextureWrapMode.Repeat);
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)TextureWrapMode.Repeat);
 
             System.Drawing.Imaging.BitmapData d = bitmap.LockBits(new Rectangle(0, 0, bitmap.Width, bitmap.Height), System.Drawing.Imaging.ImageLockMode.ReadOnly, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
 
@@ -63,9 +80,9 @@ namespace MiguModelViewer.Renderer
             Height = (float)bitmap.Height;
         }
 
-        public void Use()
+        public void Use(TextureUnit unit = TextureUnit.Texture0)
         {
-            GL.ActiveTexture(TextureUnit.Texture0);
+            GL.ActiveTexture(unit);
             GL.BindTexture(TextureTarget.Texture2D, Id);
         }
 

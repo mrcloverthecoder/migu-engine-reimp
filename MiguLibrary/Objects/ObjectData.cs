@@ -22,6 +22,7 @@ namespace MiguLibrary.Objects
         public List<Morph> Morphs;
 
         public bool IsChara = false;
+        public string Name = "";
 
         public void Read(EndianBinaryReader reader)
         {
@@ -110,7 +111,7 @@ namespace MiguLibrary.Objects
                 {
                     VertexSets[i].Positions[j] = reader.ReadVector3();
                     VertexSets[i].Positions[j] *= 0.08f;
-                    VertexSets[i].Positions[j].Z *= -1.0f;
+                    //VertexSets[i].Positions[j].Z *= -1.0f;
                     VertexSets[i].Normals[j] = reader.ReadVector3();
                     VertexSets[i].TextureCoordinates[j] = reader.ReadVector2();
                     //VertexSets[i].TextureCoordinates[j] += Vector2.One;
@@ -199,7 +200,7 @@ namespace MiguLibrary.Objects
             }
         }
 
-        public static ObjectData FromFile(string path)
+        public static ObjectData FromFile(string path, string name = "NO_NAME_SET")
         {
             ObjectData obj = new ObjectData();
 
@@ -209,6 +210,9 @@ namespace MiguLibrary.Objects
             }
 
             obj.IsChara = Path.GetFileName(path).Split('.')[0].ToUpper().EndsWith("MIG");
+            obj.Name = name;
+
+            Console.WriteLine($"OBJECT NAME {obj.Name}");
 
             return obj;
         }

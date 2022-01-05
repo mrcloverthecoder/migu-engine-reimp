@@ -12,13 +12,15 @@ namespace MiguLibrary.Objects
     {
         public string Name;
         public Matrix4x4 Pose;
-        public Vector4 Position;
+        public Vector3 Position;
+        // For other purposes
+        public Vector4 Rotation = new Vector4(0.0f, 0.0f, 0.0f, 0.0f);
         public short ParentId;
         public short ChildId;
         // I don't like to do this but this seems to be important
         public int mUnk0;
 
-        public Bone(string name, Matrix4x4 pose, Vector4 position, int unk0, short parentId, short childId)
+        public Bone(string name, Matrix4x4 pose, Vector3 position, int unk0, short parentId, short childId)
         {
             Name = name;
             Pose = pose;
@@ -32,9 +34,8 @@ namespace MiguLibrary.Objects
         {
             string name = reader.ReadString(StringBinaryFormat.FixedLength, 32);
             Matrix4x4 pose = reader.ReadMatrix4x4();
-            Vector4 position = reader.ReadVector4();
-            position *= 0.08f;
-            position.Z *= -1.0f;
+            Vector3 position = reader.ReadVector3(true);
+            reader.SeekCurrent(0x04);
             // TEST.BMD has a slightly different structure here, but I'm not worried in supporting it
             int unk0 = reader.ReadInt32();
             short parentId = reader.ReadInt16();

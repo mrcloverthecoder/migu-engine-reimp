@@ -78,7 +78,22 @@ namespace MiguModelViewer.Renderer
         public int GetUniformLoc(string uniformName) { return GL.GetUniformLocation(Id, uniformName); }
 
         public void Uniform(string name, Matrix4 m) { Use(); GL.UniformMatrix4(GetUniformLoc(name), true, ref m); }
+        
+        public void Uniform(string name, Matrix4[] m)
+        {
+            Use();
+            GL.UniformMatrix4(GetUniformLoc(name), m.Length, true, ref m[0].Row0.X);
+        }
+
+        public void Uniform(string name, bool transpose, ref Matrix4 m)
+        {
+            Use();
+            GL.UniformMatrix4(GetUniformLoc(name), transpose, ref m);
+        }
+
         public void Uniform(string name, int i) { Use(); GL.Uniform1(GetUniformLoc(name), i); }
+
+        public void Uniform(string name, bool b) { Use(); GL.Uniform1(GetUniformLoc(name), b ? 1 : 0); }
 
         public void Uniform(string name, Sn.Vector4 vec)
         {
@@ -93,15 +108,6 @@ namespace MiguModelViewer.Renderer
             // Build a float array from the vectors
             // Probably not very optimistic but... eh, it's fine for now
             GL.Uniform4(GetUniformLoc(name), vecs.Length * 4, VectorHelper.ToFloatArray(vecs));
-        }
-
-        public void Uniform(string name, Matrix4[] m)
-        {
-            Use();
-            for(int i = 0; i < m.Length; i++)
-            {
-                GL.UniformMatrix4(GetUniformLoc($"uBoneTransforms[{i}]"), true, ref m[i]);
-            }
         }
 
 

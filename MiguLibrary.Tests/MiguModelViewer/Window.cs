@@ -11,9 +11,12 @@ using OpenTK.Input;
 using OpenTK.Graphics;
 using OpenTK.Graphics.OpenGL;
 using MiguModelViewer.Renderer;
+using OpenTK.Platform.Windows;
 using MiguLibrary.IO;
 using MiguLibrary.Objects;
 using MiguLibrary.Motions;
+using MiguModelViewer.UI;
+using ImGuiNET;
 
 namespace MiguModelViewer
 {
@@ -32,9 +35,35 @@ namespace MiguModelViewer
 
         SceneData mScenePlayer;
 
-        public Window(int width, int height, string title) : base(width, height, GraphicsMode.Default, title)
+        private ImGuiController mController;
+
+        private int mOldSelectedIndex = -1;
+        private int mSelectedIndex = 0;
+
+        private int mPreviouslyChosenTest = -1;
+        private int mCurrentChosenTest = 0;
+
+        private int mMotionOldSelectedIndex = -1;
+        private int mMotionSelectedIndex = 11;
+
+        private Tests mCurrentTest;
+
+        private Dictionary<string, string> mLoadableObjects;
+        private Dictionary<string, string> mLoadableMotions;
+
+        private string[] mBoneNames = new string[60]
         {
-            Title = $"{title} | OpenGL {GL.GetString(StringName.Version)}";
+            "Center", "UpperBody", "UpperBody2", "Neck", "Head", "RightEye", "LeftEye", "RightHair", "LeftHair", "LeftShoulder",
+            "LeftArm", "LeftElbow", "LeftHandTwist", "LeftWrist", "LeftThumb0", "LeftThumb1", "LeftIndex1", "LeftIndex2", "LeftMiddle1", "LeftMiddle2",
+            "LeftLittle1", "LeftLittle2", "LeftRing1", "LeftRing2", "RightShoulder", "RightArm", "RightElbow", "RightHandTwist", "RightWrist", "RightThumb0",
+            "RightThumb1", "RightIndex1", "RightIndex2", "RightMiddle1", "RightMiddle2", "RightLittle1",
+            "RightLittle2", "RightRing1", "RightRing2", "LeftChest", "RightChest", "LowerBody", "RightFoot", "RightKnee", "RightAnkle", "RightAnkle2",
+            "LeftFoot", "LeftKnee", "LeftAnkle", "LeftAnkle2", "SKIRTm_0_0", "SKIRTm_0_1", "SKIRTm_0_2", "SKIRTm_0_3", "SKIRTm_0_4", "SKIRTm_1_0", "SKIRTm_1_1", "SKIRTm_1_2", "SKIRTm_1_3", "SKIRTm_1_4"
+        };
+
+        public Window(int width, int height, string title) : base(width, height, GraphicsMode.Default, title, GameWindowFlags.Default, DisplayDevice.Default, 3, 3, GraphicsContextFlags.Default)
+        {
+            Title = $"{title} | OpenGL {GL.GetString(StringName.Version)} - {GL.GetString(StringName.Vendor)}";
         }
 
         protected override void OnLoad(EventArgs e)
@@ -43,6 +72,47 @@ namespace MiguModelViewer
             GL.Enable(EnableCap.DebugOutput);
             GL.Enable(EnableCap.DebugOutputSynchronous);
 
+            mController = new ImGuiController((int)Config.Width, (int)Config.Height);
+
+            mLoadableObjects = new Dictionary<string, string>();
+            foreach(string dir in Directory.GetDirectories(Config.DataPath + "/OBJECTS"))
+            {
+                foreach (string file in Directory.GetFiles(dir))
+                {
+                    string[] split = dir.Replace("\\", "/").Split('/');
+
+                    string name = split[split.Length - 1];
+                    string filename = file;
+
+                    if (!file.ToUpper().EndsWith("BMD"))
+                        continue;
+
+                    if (mLoadableObjects.ContainsKey(name))
+                        name = name + "/" + Path.GetFileName(filename);
+
+                    mLoadableObjects[name] = filename;
+                    Console.WriteLine($"AAA: {name} {filename}");
+                }
+            }
+
+            mLoadableMotions = new Dictionary<string, string>();
+            foreach (string file in Directory.GetFiles(Config.DataPath + "/MOTIONS"))
+            {
+                string name = Path.GetFileName(file).Replace(".BMM", "").ToUpper();
+                string filename = file;
+
+                if (!file.ToUpper().EndsWith("BMM"))
+                    continue;
+
+                mLoadableMotions[name] = filename;
+                Console.WriteLine($"MMM: {name} {filename}");
+            }
+
+
+            //mController.AddFont("Resource/Font/NotoSansJP-Regular.otf", 20.0f);
+
+            //mController.RecreateFontDeviceTexture();
+
             /*Console.WriteLine(Matrix4.CreateOrthographic(960.0f, 540.0f, 0.01f, 100.0f));
             Console.WriteLine();
             Console.WriteLine(Matrix4.CreateOrthographicOffCenter(0.0f, 960.0f, 0.0f, 540.0f, 1f, -1f));*/
@@ -50,7 +120,7 @@ namespace MiguModelViewer
             //GL.ClearColor(0.392f, 0.584f, 0.929f, 1.0f);
             GL.ClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 
-            mScenePlayer = new SceneData(12);
+            mScenePlayer = new SceneData(State.SceneId);
 
             mFont = new GLFont("Resource/Font/map_seurat_pro_b.xml");
 
@@ -120,7 +190,9 @@ namespace MiguModelViewer
 
         protected override void OnRenderFrame(FrameEventArgs e)
         {
-            GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+            mController.Update(this, (float)e.Time);
+
+            GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
 
             GL.Enable(EnableCap.DepthTest);
 
@@ -130,7 +202,8 @@ namespace MiguModelViewer
             GL.Enable(EnableCap.Blend);
             GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
 
-            mScenePlayer.Render();
+            mScenePlayer.Render((float)e.Time);
+            //mCurrentTest?.Render();
 
             GL.Disable(EnableCap.DepthTest);
 
@@ -147,6 +220,74 @@ namespace MiguModelViewer
             mFont.RenderText(50.0f, 30.0f, ">");
             mFont.RenderText(10.0f, 50.0f, "OK");*/
 
+            if (!ImGui.Begin("Debugging site"))
+            {
+                ImGui.End();
+            }
+
+            /*ImGui.Combo("", ref mCurrentChosenTest, new string[] { "Object Test", "Motion Test" }, 2);
+
+            if (mCurrentChosenTest == 0 || mCurrentChosenTest == 1)
+            {
+                ImGui.NewLine();
+
+                ImGui.Combo("Object", ref mSelectedIndex, mLoadableObjects.Keys.ToArray(), mLoadableObjects.Count);
+            }
+
+            if (mCurrentChosenTest == 1)
+            {
+                ImGui.NewLine();
+                ImGui.Combo("Motion", ref mMotionSelectedIndex, mLoadableMotions.Keys.ToArray(), mLoadableMotions.Count);
+                ImGui.SliderInt("Motion Frame", ref mCurrentTest.CurrentFrame, 0, mCurrentTest.Get(GetAction.MotionLastFrame));
+
+                if(ImGui.Button("Play / Pause"))
+                {
+                    mCurrentTest.Switch();
+                }
+            }*/
+
+            ImGui.Checkbox("Apply inverse bind pose", ref mScenePlayer.ApplyInverseBindPose);
+            ImGui.Checkbox("Apply child transforms", ref mScenePlayer.EnableParentedTransform);
+
+            ImGui.Combo("Bone", ref mScenePlayer.SelectedBoneIndex, mBoneNames, mBoneNames.Length);
+
+            ImGui.SliderFloat("Pitch", ref mScenePlayer.SelectedBoneRotationPitch, -179.0f, 179.0f);
+            ImGui.SliderFloat("Yaw", ref mScenePlayer.SelectedBoneRotation, -179.0f, 179.0f);
+            ImGui.SliderFloat("Roll", ref mScenePlayer.SelectedBoneRotationRoll, -179.0f, 179.0f);
+
+            ImGui.Text(mScenePlayer.SelectedBoneMatrixDisp);
+
+            /*
+            if(ImGui.TreeNode("Objects"))
+            {
+                for(int i = 0; i < mScenePlayer.Objects.Count; i++)
+                {
+                    if(ImGui.TreeNode($"Object {i} (IsChara: {mScenePlayer.Objects[i].IsChara})"))
+                    {
+                        if(ImGui.TreeNode($"Bones"))
+                        {
+                            for (int j = 0; j < mScenePlayer.Objects[i].Bones.Length; j++)
+                            {
+                                if(ImGui.TreeNode($"Bone {j} ({mScenePlayer.Objects[i].Bones[j].Name})"))
+                                {
+                                    ImGui.Text($"Position: {mScenePlayer.Objects[i].Bones[j].Position}");
+                                    ImGui.Text($"Rotation: {mScenePlayer.Objects[i].Bones[j].Rotation}");
+                                    ImGui.TreePop();
+                                }
+                            }
+
+                            ImGui.TreePop();
+                        }
+                        
+                        ImGui.TreePop();
+                    }
+                }
+
+                ImGui.TreePop();
+            }*/
+
+            mController.Render();
+
             Context.SwapBuffers();
             base.OnRenderFrame(e);
         }
@@ -154,6 +295,44 @@ namespace MiguModelViewer
         protected override void OnUpdateFrame(FrameEventArgs e)
         {
             if (!Focused) return;
+
+            if(mCurrentChosenTest != mPreviouslyChosenTest)
+            {
+                mCurrentTest?.Dispose();
+
+                if (mCurrentChosenTest == 0)
+                    mCurrentTest = new ObjectTest();
+                else if (mCurrentChosenTest == 1)
+                    mCurrentTest = new MotionTest();
+
+                // To force it to automatically reload the object
+                mOldSelectedIndex = -1;
+
+                mPreviouslyChosenTest = mCurrentChosenTest;
+            }
+
+            if(mSelectedIndex != mOldSelectedIndex)
+            {
+                if(mCurrentChosenTest == 0 || mCurrentChosenTest == 1)
+                    // a little trick
+                    mCurrentTest.Reload(mLoadableObjects[ mLoadableObjects.Keys.ToArray()[mSelectedIndex] ]);
+
+                mOldSelectedIndex = mSelectedIndex;
+            }
+
+            if(mCurrentChosenTest == 1)
+            {
+                if(mMotionSelectedIndex != mMotionOldSelectedIndex)
+                {
+                    mCurrentTest.Reload(mLoadableMotions[mLoadableMotions.Keys.ToArray()[mMotionSelectedIndex]], ReloadType.Motion);
+
+                    mMotionOldSelectedIndex = mMotionSelectedIndex;
+                }
+            }
+
+
+
+            mCurrentTest.Update();
 
             /*
 

@@ -11,6 +11,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Apps", "Apps", "{27D9F064-1
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MiguModelViewer", "MiguLibrary.Tests\MiguModelViewer\MiguModelViewer.csproj", "{65EF295A-F39D-4A59-ACB4-EDD3F3656775}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "assimptest", "MiguLibrary.Tests\assimptest\assimptest.csproj", "{77E0229A-5FBC-4903-BC2E-111D71A1770B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -25,12 +27,17 @@ Global
 		{65EF295A-F39D-4A59-ACB4-EDD3F3656775}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{65EF295A-F39D-4A59-ACB4-EDD3F3656775}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{65EF295A-F39D-4A59-ACB4-EDD3F3656775}.Release|Any CPU.Build.0 = Release|Any CPU
+		{77E0229A-5FBC-4903-BC2E-111D71A1770B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{77E0229A-5FBC-4903-BC2E-111D71A1770B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{77E0229A-5FBC-4903-BC2E-111D71A1770B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{77E0229A-5FBC-4903-BC2E-111D71A1770B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{65EF295A-F39D-4A59-ACB4-EDD3F3656775} = {52C9E5A4-99FE-41D2-A608-F64DA8AF3334}
+		{77E0229A-5FBC-4903-BC2E-111D71A1770B} = {52C9E5A4-99FE-41D2-A608-F64DA8AF3334}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {16E80F0A-DA47-4A75-AD75-64ABB2BCAAE5}

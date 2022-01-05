@@ -122,6 +122,18 @@ namespace MiguLibrary.IO
             SeekBegin( current );
         }
 
+        public Quaternion ReadQuaternion()
+        {
+            Quaternion q = new Quaternion();
+
+            q.X = ReadSingle();
+            q.Y = ReadSingle();
+            q.Z = ReadSingle();
+            q.W = ReadSingle();
+
+            return q;
+        }
+
         public Vector2 ReadVector2()
         {
             Vector2 vector = new Vector2();
@@ -131,12 +143,17 @@ namespace MiguLibrary.IO
             return vector;
         }
 
-        public Vector3 ReadVector3()
+        public Vector3 ReadVector3(bool applyTransformFixes = false)
         {
             Vector3 vector = new Vector3();
             vector.X = ReadSingle();
             vector.Y = ReadSingle();
             vector.Z = ReadSingle();
+
+            if(applyTransformFixes)
+            {
+                //vector *= 0.08f;
+            }
 
             return vector;
         }
@@ -154,20 +171,20 @@ namespace MiguLibrary.IO
         public Matrix4x4 ReadMatrix4x4()
         {
             float m11 = ReadSingle();
-            float m21 = ReadSingle();
-            float m31 = ReadSingle();
-            float m41 = ReadSingle();
             float m12 = ReadSingle();
-            float m22 = ReadSingle();
-            float m32 = ReadSingle();
-            float m42 = ReadSingle();
             float m13 = ReadSingle();
-            float m23 = ReadSingle();
-            float m33 = ReadSingle();
-            float m43 = ReadSingle();
             float m14 = ReadSingle();
+            float m21 = ReadSingle();
+            float m22 = ReadSingle();
+            float m23 = ReadSingle();
             float m24 = ReadSingle();
+            float m31 = ReadSingle();
+            float m32 = ReadSingle();
+            float m33 = ReadSingle();
             float m34 = ReadSingle();
+            float m41 = ReadSingle();
+            float m42 = ReadSingle();
+            float m43 = ReadSingle();
             float m44 = ReadSingle();
 
             return new Matrix4x4(m11, m12, m13, m14, m21, m22, m23, m24, m31, m32, m33, m34, m41, m42, m43, m44);

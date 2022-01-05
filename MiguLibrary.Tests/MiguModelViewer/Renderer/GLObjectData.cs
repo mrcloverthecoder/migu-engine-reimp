@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using MiguLibrary.Objects;
 using PuyoTools.Core.Textures.Gim;
+using OpenTK;
 
 namespace MiguModelViewer.Renderer
 {
@@ -14,16 +15,23 @@ namespace MiguModelViewer.Renderer
         public GLVertexSet[] Sets;
         public GLShader Shader;
 
-        public Bone[] Bones;
+        public GLBone[] Bones;
         public string[] BoneInfluenceNames;
         public bool IsChara;
 
         private bool mDisposed = false;
 
+        public Matrix4 Model = Matrix4.CreateRotationY(MathHelper.DegreesToRadians(180.0f));
+
+        public string Name;
+
         public GLObjectData(ObjectData obj, GLShader shader, string path)
         {
             Sets = new GLVertexSet[obj.VertexSets.Count];
             GLMaterial[] materials = new GLMaterial[obj.Materials.Count];
+
+            Console.WriteLine(path);
+            Name = obj.Name;
 
             for (int i = 0; i < obj.Materials.Count; i++)
             {
@@ -35,7 +43,7 @@ namespace MiguModelViewer.Renderer
 
                 if (obj.Materials[i].HasDiffuseTexture)
                 {
-                    GimTextureDecoder decoder = new GimTextureDecoder($"{Config.DataPath}/" + $"{path}/PSP/{obj.Materials[i].TextureName.Replace(".png", ".gim")}".ToUpper());
+                    GimTextureDecoder decoder = new GimTextureDecoder($"{Config.DataPath}/" + $"{path}/PSP/{obj.Materials[i].TextureName.Replace(".png", ".gim").Replace(".bmp", ".gim")}".ToUpper());
 
                     byte[] data = decoder.GetPixelData();
 
@@ -65,7 +73,21 @@ namespace MiguModelViewer.Renderer
 
                     Cache.WriteTextureAlphaCache();
 
-                    materials[i] = new GLMaterial(obj.Materials[i], data, decoder.Width, decoder.Height, decoder.PixelFormat);
+                    string normalPath = $"Resource/Ext/{path}/{obj.Materials[i].TextureName.Replace(".png", "_N.png").Replace(".bmp", "_N.png")}";
+
+                    if (File.Exists(normalPath))
+                    {
+                        GLTexture diffuse = new GLTexture(decoder.Width, decoder.Height, decoder.PixelFormat, data);
+                        GLTexture normal = new GLTexture(normalPath);
+
+                        materials[i] = new GLMaterial(obj.Materials[i], diffuse, normal);
+                    }
+                    else
+                    {
+                        materials[i] = new GLMaterial(obj.Materials[i], data, decoder.Width, decoder.Height, decoder.PixelFormat);
+                    }
+                    
+                    //Console.WriteLine($"TEXTR EXISTS 1: {File.Exists(pth)} {pth}");
 
                     materials[i].HasAlpha = Cache.TextureAlpha[obj.Materials[i].TextureName];
 
@@ -78,15 +100,20 @@ namespace MiguModelViewer.Renderer
                 }
             }
 
-            Bones = obj.Bones.ToArray();
-            //Bones.OrderBy(o => o.ParentId);
+            Bones = new GLBone[obj.Bones.Count];
+            int j = 0;
+            foreach(Bone bone in obj.Bones)
+            {
+                Matrix4 bp = bone.Pose.ToGL();
+                Bones[j] = new GLBone(bone.Name, bp, bone.Position.ToGL(), bone.ParentId);
+                j++;
+            }
 
             BoneInfluenceNames = new string[obj.Bones.Count];
 
             for(int i = 0; i < obj.Bones.Count; i++)
             {
                 BoneInfluenceNames[i] = obj.Bones[i].Name;
-                Console.WriteLine($"BONE AAAA:C {BoneInfluenceNames[i]}");
             }
 
             for (int i = 0; i < obj.VertexSets.Count; i++)
@@ -94,11 +121,6 @@ namespace MiguModelViewer.Renderer
 
             // sorting
             Sets = Sets.OrderBy(set => set.Material.HasAlpha).ToArray();
-            for(int i = 0; i < Sets.Length; i++)
-            {
-                Console.WriteLine($"Sets #{i}:");
-                Console.WriteLine($"    HasAlpha: {Sets[i].Material.HasAlpha}");
-            }
 
             Shader = shader;
 
@@ -112,6 +134,7 @@ namespace MiguModelViewer.Renderer
         {
             foreach(GLVertexSet set in Sets)
             {
+                Shader.Uniform("uModel", Model);
                 set.Render(Shader);
             }
         }

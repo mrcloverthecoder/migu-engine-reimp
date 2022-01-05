@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using OpenTK;
 
 namespace MiguModelViewer
 {
@@ -51,5 +52,7 @@ namespace MiguModelViewer
 
         public static float Width = 960.0f;
         public static float Height = 540.0f;
+
+        public static float Framerate = 60.0f;
     }
 }

@@ -31,6 +31,11 @@ namespace MiguLibrary
     {
         public static float Rad2Deg = (float)(Math.PI * 2.0f) / 360.0f;
 
+        public static Vector3 FromQ2(Vector4 v)
+        {
+            return FromQ2(new Quaternion(v.X, v.Y, v.Z, v.W));
+        }
+
         public static Vector3 FromQ2(Quaternion q1)
         {
             float sqw = q1.W * q1.W;

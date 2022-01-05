@@ -3,16 +3,18 @@
 out vec3 fNormal;
 out vec2 fTexCoord;
 out vec4 fColor;
+out vec3 fPosition;
 
 layout(location = 0) in vec3 aPosition;
 layout(location = 1) in vec3 aNormal;
 layout(location = 2) in vec2 aTexCoord;
 layout(location = 3) in vec4 aColor;
-layout(location = 4) in ivec4 aBoneIndices;
+layout(location = 4) in vec4 aBoneIndices;
 layout(location = 5) in vec4 aBoneWeights;
 
 uniform mat4 uProjection;
 uniform mat4 uView;
+uniform mat4 uModel;
 
 uniform mat4 uBoneTransforms[60];
 
@@ -25,14 +27,16 @@ void main(void)
 	vec4 mPosition = vec4(0.0);
 	
 	for(int i = 0; i < 4; i++)
-	{
-		mPosition = (vec4(aPosition, 1.0) * uBoneTransforms[aBoneIndices[i]]) * aBoneWeights[i] + mPosition;
-		//mPosition *= aBoneWeights[i];
-		//mPosition += _position;
+	{	
+		int index = int(aBoneIndices[i]);
+		
+		mPosition += vec4(aPosition, 1.0) * uBoneTransforms[index]  * aBoneWeights[i];
 	}
 	
 	if(mPosition == vec4(0.0))
 		mPosition = vec4(aPosition, 1.0);
+		
+	fPosition = vec3(vec4(aPosition, 1.0) * uModel);
 	
-	gl_Position = vec4(mPosition.xyz, 1.0) * uView * uProjection;
+	gl_Position = vec4(mPosition.xyz, 1.0) * uModel * uView * uProjection;
 }

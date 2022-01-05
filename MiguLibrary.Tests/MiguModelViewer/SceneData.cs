@@ -12,14 +12,18 @@ using MiguLibrary.Scene;
 using MiguLibrary.Motions;
 using MiguLibrary;
 using OpenTK;
+using OpenTK.Input;
 using System.Diagnostics;
+using MiguLibrary.IO;
 
 namespace MiguModelViewer
 {
     public class SceneData
     {
-        List<GLObjectData> Objects;
-        List<Motion> Motions;
+        public List<GLObjectData> Objects;
+        public List<Motion> Motions;
+
+        public bool IsPlaying = false;
 
         Sn.Vector4 ClearColor;
 
@@ -27,10 +31,27 @@ namespace MiguModelViewer
         string RoomId = String.Empty;
         string SongName = String.Empty;
 
+        private BSX mSceneInfo;
+
         private GLFont mFont;
 
-        private bool mPlayingAnim = false;
         private int mCurrentFrame = 0;
+
+        private KeyboardState mLastState;
+        private Stopwatch mTime;
+
+        private string[] mCharaMots;
+
+        public bool ApplyInverseBindPose;
+
+        public bool EnableParentedTransform;
+        public int SelectedBoneIndex;
+
+        public float SelectedBoneRotationPitch;
+        public float SelectedBoneRotation;
+        public float SelectedBoneRotationRoll;
+
+        public string SelectedBoneMatrixDisp = "";
 
         public SceneData(int id)
         {
@@ -38,6 +59,9 @@ namespace MiguModelViewer
             Motions = new List<Motion>();
 
             ClearColor = new Sn.Vector4(1.0f);
+
+            mLastState = new KeyboardState();
+            mTime = new Stopwatch();
 
             Load("S" + id.ToString("000"));
         }
@@ -47,7 +71,9 @@ namespace MiguModelViewer
             Objects.Clear();
             Motions.Clear();
 
-            BSX sceneInfo = BSX.FromFile($"{Config.DataPath}/SCENEDATA/{id}/{id}.BSX");
+            mCharaMots = new string[2];
+
+            mSceneInfo = BSX.FromFile($"{Config.DataPath}/SCENEDATA/{id}/{id}.BSX");
 
             BimStack table = BimStack.FromFile($"{Config.DataPath}/SCENEDATA/{id}/{id}_TABLE.MBITS");
 
@@ -61,121 +87,283 @@ namespace MiguModelViewer
                     SongName = (string)value;
             }
 
-            ClearColor = sceneInfo.BackgroundColor;
+            // Main body motion
+            mCharaMots[0] = Id;
 
-            foreach (FileEntry entry in sceneInfo.ObjectEntries)
+            ClearColor = mSceneInfo.BackgroundColor;
+
+            foreach (FileEntry entry in mSceneInfo.ObjectEntries)
             {
                 Console.WriteLine($"{Config.DataPath}/{entry.Path}");
-                Objects.Add(new GLObjectData(ObjectData.FromFile($"{Config.DataPath}/{entry.Path}"), new GLShader(File.ReadAllText("Resource/Shader/OBJ_01.vert.shp"), File.ReadAllText("Resource/Shader/OBJ_01.frag.shp")), Path.GetDirectoryName(entry.Path)));
+                ObjectData obj = ObjectData.FromFile($"{Config.DataPath}/{entry.Path}", entry.Path);
+
+                // Physics motion
+                if(obj.PhysicsNumber != 0)
+                    mCharaMots[1] = Id + $"_P{obj.PhysicsNumber}";
+                Console.WriteLine($"PHSYICS MOT: {mCharaMots[1]}");
+
+                Objects.Add(new GLObjectData(obj, new GLShader(File.ReadAllText("Resource/Shader/OBJ_01.vert.shp"), File.ReadAllText("Resource/Shader/OBJ_01.frag.shp")), Path.GetDirectoryName(entry.Path)));
             }
 
-            foreach(FileEntry entry in sceneInfo.MotionEntries)
+            foreach(FileEntry entry in mSceneInfo.MotionEntries)
             {
                 Console.WriteLine($"{Config.DataPath}/{entry.Path}");
                 Motions.Add(Motion.FromFile($"{Config.DataPath}/{entry.Path}"));
+
+                if (entry.Path == "MOTIONS/S012_P1.BMM")
+                {
+                    Console.WriteLine($"KEYFRAME 001: {Motions.Last().Bones[2].Keyframes[1].Rotation}");
+                }
+
+                /*foreach(Keyframe key in Motions.Last().Bones[1].Keyframes)
+                {
+                    if (entry.Path == "MOTIONS/S012_P1.BMM")
+                        break;
+
+                    Console.WriteLine($"{entry.Path} FRAME");
+                    Console.WriteLine($"    {key.Rotation}");
+                }*/
             }
+
 
             mFont = new GLFont("Resource/Font/map_seurat_pro_b.xml");
 
             GL.ClearColor(ClearColor.X, ClearColor.Y, ClearColor.Z, ClearColor.W);
 
-            /*
-            string s = "";
-            foreach (Motion mot in Motions)
+            string st1 = "";
+            foreach(FileEntry entry in mSceneInfo.ObjectEntries)
             {
-                s += mot.Name + '\n';
+                st1 += $"{entry.Path}\n";
+                st1 += $"\tCuts\n";
+
                 int i = 0;
-                foreach (MotionBone bone in mot.Bones)
+                foreach(SceneAnimationCut cut in entry.Cuts)
                 {
-                    s += ($" {bone.Name} => {bone.Keyframes.Length} => {bone.Name == Objects[1].BoneInfluenceNames[i]} => {Objects[1].BoneInfluenceNames[i]}\n");
+                    st1 += $"\t\tCut #{i} ({cut.StartFrame}~{cut.Length})\n";
+                    st1 += $"\t\t\tTranslation Points:\n";
+                    foreach(TranslationPoint point in cut.TranslationPoints)
+                    {
+                        st1 += $"\t\t\t\t{point.StartPosition} {point.MidwayPosition} {point.EndPosition} ({point.FadeIn} | {point.FadeOut})\n";
+                    }
+                    st1 += $"\t\t\tRotation Points:\n";
+                    foreach(RotationPoint point in cut.RotationPoints)
+                    {
+                        st1 += $"\t\t\t\t{point.Rotation}\n";
+                    }
                     i++;
                 }
             }
 
-            File.WriteAllText("out.txt", s);*/
+            File.WriteAllText("test2.txt", st1);
+
+            // 16mb alloc for motion data dump
+            char[] m = new char[16384 * 1024]; 
+
+            string s = "";
+            foreach (GLObjectData obj in Objects)
+            {
+                if (!obj.IsChara)
+                    continue;
+
+                int i = 0;
+                foreach (GLBone bone in obj.Bones)
+                {
+                    s += $"Bone {bone.Name} ";
+                    if(bone.ParentId != -1)
+                    {
+                        s += $"(Child of {obj.Bones[bone.ParentId].Name})";
+                    }
+                    s += "\n";
+                    s += $"  {bone.InverseBindPose}\n";
+                    i++;
+                }
+            }
+
+            foreach(Motion mot in Motions)
+            {
+                if (mot.Name != Id)
+                    continue;
+
+                foreach(MotionBone bone in mot.Bones)
+                {
+                    s += $"Motion bone {bone.Name} {bone.Type} {bone.Keyframes[0].Position}\n";
+                }
+            }
+
+            /*int position = 0;
+            foreach(Motion mot in Motions)
+            {
+                if (mot.Name != Id)
+                    break;
+
+                position = m.PushString(mot.Name + $" ({mot.Bones[0].Keyframes.Length} keyframes)" + '\n', position);
+
+                foreach(MotionBone bone in mot.Bones)
+                {
+                    position = m.PushString($"\t{bone.Name}.{bone.Type}\n", position);
+
+                    Console.WriteLine(mot.Name);
+                    Console.WriteLine(bone.Keyframes.Length);
+                    for(int i = 0; i < bone.Keyframes.Length; i++)
+                    {
+                        position = m.PushString($"\t\t{bone.Keyframes[i].Frame} | {bone.Keyframes[i].Position} {bone.Keyframes[i].Rotation}\n", position);
+                    }
+                }
+            }
+
+            using(EndianBinaryWriter writer = new EndianBinaryWriter(File.Open($"cache\\dmp\\mot\\{Id}.txt", FileMode.Create), Endianness.LittleEndian))
+            {
+                writer.Write(m);
+            }
+
+            m = null;*/
+
+            File.WriteAllText("out1.txt", s);
         }
 
         public void Update()
         {
-            /*if(mPlayingAnim == false && mCurrentFrame == 0)
-            {
-                foreach(GLObjectData obj in Objects)
-                {
-                    for(int i = 0; i < 60; i++)
-                        obj.Shader.Uniform($"uBoneTransforms[{i}]", OpenTK.Matrix4.Identity);
-                }
-            }*/
+            KeyboardState state = Keyboard.GetState();
 
-            /*foreach(Motion mot in Motions)
+            if(state.IsKeyDown(Key.F3) && !mLastState.IsKeyDown(Key.F3))
             {
-                if (!mPlayingAnim)
+                Console.Write("index: ");
+                int index = int.Parse(Console.ReadLine());
+
+                Console.Write("pos: ");
+                string line = Console.ReadLine();
+                Vector3 pos = new Vector3(float.Parse(line.Split(',')[0]), float.Parse(line.Split(',')[1]), float.Parse(line.Split(',')[2]));
+
+                foreach (GLObjectData obj in Objects)
+                {
+                    obj.Shader.Uniform($"uBoneTransforms[{index}]", Matrix4.CreateTranslation(pos.X, pos.Y, pos.Z));
+                }
+            }
+
+            foreach(FileEntry entry in mSceneInfo.ObjectEntries)
+            {
+                if (!IsPlaying)
                     break;
 
                 foreach(GLObjectData obj in Objects)
                 {
-                    if(mot.Name == Id && obj.IsChara)
+                    if (entry.Path != obj.Name)
+                        continue;
+
+                    foreach(SceneAnimationCut cut in entry.Cuts)
                     {
-                        for (int i = 0; i < 60; i++)
-                            obj.Shader.Uniform($"uBoneTransforms[{i}]", Matrix4.Identity);
-
-                        if (mot.Bones.Count < 1)
-                            continue;
-
-                        // Assume every bone has the same number of keyframes
-                        int keyframeCount = mot.Bones[0].Keyframes.Length;
-
-                        if (keyframeCount < 1)
-                            break;
-
-                        int currentMotionFrame = mot.Bones[0].Keyframes[0].Frame;
-
-                        if (mCurrentFrame >= keyframeCount)
-                            break;
-
-                        if (mCurrentFrame < currentMotionFrame)
-                            break;
-
-                        for (int i = 0; i < mot.Bones.Count)
+                        if ((int)Math.Floor(mCurrentFrame * (60.0f / Config.Framerate)) > cut.StartFrame)
                         {
-                            int boneIndex = 0;
-                            int motParentIndex = 0;
-                            for (int j = 0; j < obj.Bones.Length; j++)
+                            Matrix4 translation = Matrix4.Identity;
+                            // For now it just expects that the cut has a single translation point
+                            foreach(TranslationPoint point in cut.TranslationPoints)
                             {
-                                if (obj.Bones[j].Name == mot.Bones[i].Name)
-                                {
-                                    boneIndex = j;
-                                }
+                                // Compose model matrix translation
+                                translation = Matrix4.CreateTranslation(point.EndPosition.ToGL());
                             }
+                            Matrix4 rotation = Matrix4.Identity;
+                            foreach (RotationPoint point in cut.RotationPoints)
+                                if(point.Rotation != Sn.Quaternion.Identity)
+                                    rotation = Matrix4.CreateFromQuaternion(point.Rotation.ToGL());
 
-                            Matrix4 localTrans = Matrix4.CreateTranslation(mot.Bones[i].Keyframes[mCurrentFrame].Position.ToGL());
-
-                            if (obj.Bones[boneIndex].ParentId != -1)
-                            {
-                                localTrans *= Matrix4.CreateTranslation(mot.Bones)
-                            }
-
-                            //Matrix4 scale = Matrix4.CreateScale(1.0f);
-                            //Matrix4 rotation = Matrix4.CreateFromQuaternion(new Quaternion(bone.Keyframes[mCurrentFrame].Rotation.X, bone.Keyframes[mCurrentFrame].Rotation.Y, bone.Keyframes[mCurrentFrame].Rotation.Z, bone.Keyframes[mCurrentFrame].Rotation.W));
-
-                            
-
-                            Matrix4 rotation = Matrix4.CreateRotationY(OpenTK.MathHelper.DegreesToRadians(0.0f));
-
-                            //Console.WriteLine(rotation);=
-
-                            //Console.WriteLine($"IDXB: {boneIndex}");
-                            obj.Shader.Uniform($"uBoneTransforms[{boneIndex}]", translation);
+                            obj.Model *= rotation * translation;
                         }
                     }
                 }
+            }
+
+            /*if(!IsPlaying && ApplyInverseBindPose)
+            {
+                Matrix4[] transforms = new Matrix4[60];
+
+                int i = 0;
+                foreach(GLBone bone in Objects[1].Bones)
+                {
+                    //Console.WriteLine("=--=");
+                    transforms[i] = bone.InverseBindPose;
+                    //Console.WriteLine(Transforms[i]);
+                    //Console.WriteLine("\n+--+\n");
+                    //Console.WriteLine(Matrix4.CreateTranslation(10f, 5f, -20f));
+                    //Console.WriteLine();
+                    i++;
+                }
+
+                Objects[1].Shader.Uniform("uBoneTransforms", transforms);
+            }
+            else if(!IsPlaying && !ApplyInverseBindPose)
+            {
+                Matrix4[] transforms = new Matrix4[60];
+
+                for (int i = 0; i < 60; i++)
+                    transforms[i] = Matrix4.Identity;
+
+                Objects[1].Shader.Uniform("uBoneTransforms", transforms);
             }*/
 
-            if (mPlayingAnim)
+            /*
+            if(!IsPlaying)
+            {
+                Matrix4[] transforms = new Matrix4[60];
+                for (int i = 0; i < transforms.Length; i++)
+                    transforms[i] = Matrix4.Identity;
+
+                Matrix4 rotation = Matrix4.CreateRotationX(OpenTK.MathHelper.DegreesToRadians(SelectedBoneRotationPitch)) * Matrix4.CreateRotationY(OpenTK.MathHelper.DegreesToRadians(SelectedBoneRotation)) * Matrix4.CreateRotationZ(OpenTK.MathHelper.DegreesToRadians(SelectedBoneRotationRoll));
+
+                SelectedBoneMatrixDisp = Objects[1].Bones[SelectedBoneIndex].InverseBindPose.ToString();
+
+                if (EnableParentedTransform)
+                {
+                    for(int i = 0; i < Objects[1].Bones.Length; i++)
+                    {
+                        if (Objects[1].Bones[i].ParentId != -1)
+                        {
+                            Matrix4 childRotation = Matrix4.Identity;
+                        }
+                    }
+                }
+
+                transforms[SelectedBoneIndex] = rotation * Objects[1].Bones[SelectedBoneIndex].BindPose;
+
+                Objects[1].Shader.Uniform("uBoneTransforms", transforms);
+            }*/
+
+            foreach (GLObjectData obj in Objects)
+            {
+                if (!IsPlaying)
+                    break;
+
+                Matrix4[] transforms = new Matrix4[60];
+                for (int i = 0; i < transforms.Length; i++)
+                    transforms[i] = Matrix4.Zero;
+
+                foreach (Motion mot in Motions)
+                {
+                    // Break if the motion is a character motion and the object is not a character
+                    if (mCharaMots.Contains(mot.Name) && !obj.IsChara)
+                        break;
+
+                    // its guarranteed that a matrix array with the same length as the body motion is returned
+                    int i = 0;
+                    foreach(Matrix4 transform in AnimationPlayer.GetTransforms(obj.Bones, mot.Bones, obj.BoneInfluenceNames, (int)Math.Floor(mCurrentFrame * (30.0f / Config.Framerate)), transforms))
+                    {
+                        if (transforms[i] == Matrix4.Zero && transform != Matrix4.Zero)
+                            transforms[i] = transform;
+                        i++;
+                    }
+
+                    obj.Shader.Uniform("uBoneTransforms", transforms);
+                }
+            }
+
+            mLastState = state;
+
+            if (IsPlaying)
                 mCurrentFrame++;
         }
 
-        public void Render()
+        public void Render(float delta)
         {
+
             GL.Enable(EnableCap.DepthTest);
 
             for (int i = 0; i < Objects.Count; i++)
@@ -183,17 +371,34 @@ namespace MiguModelViewer
 
             GL.Disable(EnableCap.DepthTest);
 
-            mFont.RenderText(10.0f, 10.0f, Id);
-            mFont.RenderText(10.0f, 25.0f, $"CURRENT ANIM FRAME: {mCurrentFrame}");
-            mFont.RenderText(10.0f, 45.0f, $"CAM: {Camera.Position} <{Camera.Pitch} | {Camera.Yaw}>");
+            /*for(int i = 0; i < Motions.Count; i++)
+            {
+                if(Motions[i].Name == Id)
+                {
+                    for(int j = 0; j < Motions[i].Bones.Count; j++)
+                    {
+                        mFont.RenderText(10.0f, 15.0f * j, $"{j} :: {MiguLibrary.MathHelper.FromQ2(Motions[i].Bones[j].Keyframes[mCurrentFrame].Rotation)}");
+                    }
+                }
+            }*/
+
+            //mFont.RenderText(10.0f, 10.0f, Id);
+            //mFont.RenderText(10.0f, 25.0f, $"CURRENT ANIM FRAME: {mCurrentFrame}");
+            //mFont.RenderText(10.0f, 45.0f, $"CAM: {Camera.Position} <{Camera.Pitch} | {Camera.Yaw}>");
         }
 
         public void FlipPlayingState()
         {
-            if (mPlayingAnim)
-                mPlayingAnim = false;
+            if (IsPlaying)
+            {
+                IsPlaying = false;
+                mTime.Stop();
+            }
             else
-                mPlayingAnim = true;
+            {
+                IsPlaying = true;
+                mTime.Start();
+            }
         }
 
         public void Reset()

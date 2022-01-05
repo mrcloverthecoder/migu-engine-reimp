@@ -73,20 +73,32 @@ namespace MiguLibrary.Motions
                         }
                         else if(Bones[i].Type == MotionBoneType.RotTrans)
                         {
-                            key.Position = reader.ReadVector3() * 0.08f * -1.0f;
-                            reader.SeekCurrent(4);
+                            // Read rotation at its offset first
+                            reader.ReadAtOffset(reader.Position + (16 * frameCountCache[i]), () =>
+                            {
+                                key.Rotation = reader.ReadVector4();
+                            });
 
-                            reader.ReadAtOffset(reader.Position + (16 * frameCountCache[i]) - 16, () => key.Rotation = reader.ReadVector4());
+                            key.Position = reader.ReadVector3() * 0.08f;
+                            //key.Position.Z *= -1.0f;
+
+                            reader.SeekCurrent(4);
 
                             //Console.WriteLine($"CAMERA POS: {key.Translation} {key.Rotation} {reader.Position} {}");
                         }
 
                         Bones[i].Keyframes[j] = key;
                     }
+
+                    // Jump the rotation data
+                    if (Bones[i].Type == MotionBoneType.RotTrans)
+                    {
+                        Console.WriteLine($"BMM position: {reader.Position}");
+                        reader.SeekCurrent(16 * frameCountCache[i]);
+                        Console.WriteLine($"BMM position 02: {reader.Position}");
+                    }
                 }
             }
-
-            Console.WriteLine($"BMM Position: {reader.Position}");
         }
 
         public static Motion FromFile(string path)
