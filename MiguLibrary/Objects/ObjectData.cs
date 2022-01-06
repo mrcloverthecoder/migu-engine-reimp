@@ -50,13 +50,9 @@ namespace MiguLibrary.Objects
             Materials = new List<Material>();
             for(int i = 0; i < materialCount; i++)
             {
-                Console.WriteLine($"Mat #{i}:");
-                Console.WriteLine($"     S01: {reader.ReadInt32()}");
-                Console.WriteLine($"     S02: {reader.ReadInt16()}");
-                //reader.SeekCurrent(0x06);
+                reader.SeekCurrent(0x06);
+                
                 short texNameIndex = reader.ReadInt16();
-                if(texNameIndex != -1)
-                    Console.WriteLine($"     TEX: {textureNames[texNameIndex]}");
 
                 string textureName = "";
                 bool hasDiffuseTexture = true;
@@ -69,9 +65,6 @@ namespace MiguLibrary.Objects
                 Color diffuseColor = reader.ReadColor();
                 Color ambientColor = reader.ReadColor();
                 Color specularColor = reader.ReadColor();
-                /*Console.WriteLine($"     DIF: {diffuseColor}");
-                Console.WriteLine($"     AMB: {ambientColor}");
-                Console.WriteLine($"     SPC: {specularColor}");*/
 
                 Materials.Add(new Material(textureName, diffuseColor, ambientColor, specularColor, hasDiffuseTexture));
             }
@@ -111,13 +104,8 @@ namespace MiguLibrary.Objects
                 {
                     VertexSets[i].Positions[j] = reader.ReadVector3();
                     VertexSets[i].Positions[j] *= 0.08f;
-                    //VertexSets[i].Positions[j].Z *= -1.0f;
                     VertexSets[i].Normals[j] = reader.ReadVector3();
                     VertexSets[i].TextureCoordinates[j] = reader.ReadVector2();
-                    //VertexSets[i].TextureCoordinates[j] += Vector2.One;
-                    //if (VertexSets[i].TextureCoordinates[j].X < 0 || VertexSets[i].TextureCoordinates[j].Y < 0)
-                    //Console.WriteLine($"{VertexSets[i].TextureCoordinates[j].X} {VertexSets[i].TextureCoordinates[j].Y}");
-                    //VertexSets[i].TextureCoordinates[j].Y = -VertexSets[i].TextureCoordinates[j].Y;
                     VertexSets[i].Colors[j] = reader.ReadColor();
 
                     VertexBone bone = new VertexBone();
@@ -165,11 +153,6 @@ namespace MiguLibrary.Objects
                     FaceSets[i].FaceIndices[j] = reader.ReadUInt16();
                 for (int j = 0; j < FaceSets[i].BoneIndices.Length; j++)
                     FaceSets[i].BoneIndices[j] = reader.ReadInt16();
-
-                Console.WriteLine($"BONE COUNT {FaceSets[i].BoneIndices.Length}");
-                Console.WriteLine($"BONE INDICES (FACE #{i}):");
-                for (int z = 0; z < FaceSets[i].BoneIndices.Length; z++)
-                    Console.WriteLine($"BONE IDX #{z}: {FaceSets[i].BoneIndices[z]}");
             }
 
             int morphCount = reader.ReadInt32();
@@ -193,7 +176,7 @@ namespace MiguLibrary.Objects
                 for(int j = 0; j < Morphs[i].Morphs.Length; j++)
                 {
                     int id = reader.ReadInt32();
-                    Vector3 transform = reader.ReadVector3();
+                    Vector3 transform = reader.ReadVector3() * 0.08f;
 
                     Morphs[i].Morphs[j] = new VertexMorph(id, transform);
                 }

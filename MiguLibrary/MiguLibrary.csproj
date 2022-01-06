@@ -64,7 +64,7 @@
     <Compile Include="Objects\VertexSet.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Scene\BimStack.cs" />
-    <Compile Include="Scene\BSX.cs" />
+    <Compile Include="Scene\B3DScene.cs" />
     <Compile Include="Scene\SceneAnimationCut.cs" />
     <Compile Include="Texture\GimMetadata.cs" />
     <Compile Include="Texture\GimPaletteFormat.cs" />

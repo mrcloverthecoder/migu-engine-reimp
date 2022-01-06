@@ -98,6 +98,7 @@
     <Compile Include="Global.cs" />
     <Compile Include="Renderer\Camera.cs" />
     <Compile Include="Renderer\DrawAlignment.cs" />
+    <Compile Include="Renderer\GLSceneData.cs" />
     <Compile Include="Renderer\GLBone.cs" />
     <Compile Include="Renderer\GLBuffer.cs" />
     <Compile Include="Renderer\GLFont.cs" />
@@ -108,7 +109,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Renderer\GLTexture.cs" />
     <Compile Include="Renderer\GLVertexSet.cs" />
-    <Compile Include="SceneData.cs" />
+    <Compile Include="Scene.cs" />
     <Compile Include="Tests.cs" />
     <Compile Include="UI\ImGuiController.cs" />
     <Compile Include="Utils.cs" />

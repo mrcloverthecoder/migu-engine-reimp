@@ -31,6 +31,8 @@ namespace MiguLibrary.Scene
             cut.StartFrame = reader.ReadInt32();
             cut.Length = reader.ReadInt32();
 
+            Console.WriteLine($"{cut.StartFrame} {cut.Length}");
+
             // Unknown data
             reader.SeekCurrent(8 + (4 * 16));
 

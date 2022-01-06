@@ -43,7 +43,7 @@ namespace MiguModelViewer
 
     public class State
     {
-        public static int SceneId = 1;
+        public static int SceneId = 10;
     }
 
     public class Config

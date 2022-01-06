@@ -33,7 +33,7 @@ namespace MiguModelViewer
 
         KeyboardState lastState = new KeyboardState();
 
-        SceneData mScenePlayer;
+        Scene mScenePlayer;
 
         private ImGuiController mController;
 
@@ -120,7 +120,7 @@ namespace MiguModelViewer
             //GL.ClearColor(0.392f, 0.584f, 0.929f, 1.0f);
             GL.ClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 
-            mScenePlayer = new SceneData(State.SceneId);
+            mScenePlayer = new Scene(State.SceneId);
 
             mFont = new GLFont("Resource/Font/map_seurat_pro_b.xml");
 
@@ -225,7 +225,7 @@ namespace MiguModelViewer
                 ImGui.End();
             }
 
-            /*ImGui.Combo("", ref mCurrentChosenTest, new string[] { "Object Test", "Motion Test" }, 2);
+            ImGui.Combo("", ref mCurrentChosenTest, new string[] { "Object Test", "Motion Test" }, 2);
 
             if (mCurrentChosenTest == 0 || mCurrentChosenTest == 1)
             {
@@ -244,9 +244,9 @@ namespace MiguModelViewer
                 {
                     mCurrentTest.Switch();
                 }
-            }*/
+            }
 
-            ImGui.Checkbox("Apply inverse bind pose", ref mScenePlayer.ApplyInverseBindPose);
+            /*ImGui.Checkbox("Apply inverse bind pose", ref mScenePlayer.ApplyInverseBindPose);
             ImGui.Checkbox("Apply child transforms", ref mScenePlayer.EnableParentedTransform);
 
             ImGui.Combo("Bone", ref mScenePlayer.SelectedBoneIndex, mBoneNames, mBoneNames.Length);
@@ -255,7 +255,7 @@ namespace MiguModelViewer
             ImGui.SliderFloat("Yaw", ref mScenePlayer.SelectedBoneRotation, -179.0f, 179.0f);
             ImGui.SliderFloat("Roll", ref mScenePlayer.SelectedBoneRotationRoll, -179.0f, 179.0f);
 
-            ImGui.Text(mScenePlayer.SelectedBoneMatrixDisp);
+            ImGui.Text(mScenePlayer.SelectedBoneMatrixDisp);*/
 
             /*
             if(ImGui.TreeNode("Objects"))
@@ -398,7 +398,7 @@ namespace MiguModelViewer
                 int id = MathHelper.Clamp(int.Parse(Console.ReadLine()), 1, 30);
 
                 mScenePlayer.Unload();
-                mScenePlayer = new SceneData(id);
+                mScenePlayer = new Scene(id);
             }
             if (state.IsKeyDown(Key.Comma) && !isPressed)
             {

@@ -13,6 +13,7 @@ namespace MiguLibrary.Motions
         public string Name = String.Empty;
         public List<MotionBone> Bones;
 
+
         public void Read(EndianBinaryReader reader)
         {
             if (!reader.ReadSignature("B3D_ANM", 8))

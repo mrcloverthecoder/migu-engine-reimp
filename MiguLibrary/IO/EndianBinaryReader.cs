@@ -152,7 +152,7 @@ namespace MiguLibrary.IO
 
             if(applyTransformFixes)
             {
-                //vector *= 0.08f;
+                vector *= 0.08f;
             }
 
             return vector;

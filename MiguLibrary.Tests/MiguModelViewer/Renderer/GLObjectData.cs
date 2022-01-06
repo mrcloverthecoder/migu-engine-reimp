@@ -21,7 +21,7 @@ namespace MiguModelViewer.Renderer
 
         private bool mDisposed = false;
 
-        public Matrix4 Model = Matrix4.CreateRotationY(MathHelper.DegreesToRadians(180.0f));
+        public Matrix4 Model = Matrix4.CreateRotationY(MathHelper.DegreesToRadians(180.0f)) * Matrix4.CreateScale(-1.0f, 1.0f, 1.0f);
 
         public string Name;
 
@@ -35,12 +35,6 @@ namespace MiguModelViewer.Renderer
 
             for (int i = 0; i < obj.Materials.Count; i++)
             {
-                /*if (File.Exists($"tests/PSP/{obj.Materials[i].TextureName.Replace(".png", "out.png").ToLower()}"))
-                {
-                    materials[i] = new GLMaterial(obj.Materials[i], "tests/PSP/" + obj.Materials[i].TextureName.Replace(".png", "out.png").ToLower());
-                    continue;
-                }*/
-
                 if (obj.Materials[i].HasDiffuseTexture)
                 {
                     GimTextureDecoder decoder = new GimTextureDecoder($"{Config.DataPath}/" + $"{path}/PSP/{obj.Materials[i].TextureName.Replace(".png", ".gim").Replace(".bmp", ".gim")}".ToUpper());
@@ -55,7 +49,6 @@ namespace MiguModelViewer.Renderer
                         {
                             for(int x = 0; x < (decoder.Width / 4); x++)
                             {
-                                //Console.WriteLine((y * decoder.Width) + ((4 * (x + 1)) - 1));
                                 if(data[(y * decoder.Width) + ((4 * (x + 1)) - 1)] < 0xFF)
                                 {
                                     Cache.TextureAlpha[obj.Materials[i].TextureName] = true;
@@ -86,8 +79,6 @@ namespace MiguModelViewer.Renderer
                     {
                         materials[i] = new GLMaterial(obj.Materials[i], data, decoder.Width, decoder.Height, decoder.PixelFormat);
                     }
-                    
-                    //Console.WriteLine($"TEXTR EXISTS 1: {File.Exists(pth)} {pth}");
 
                     materials[i].HasAlpha = Cache.TextureAlpha[obj.Materials[i].TextureName];
 
@@ -132,9 +123,10 @@ namespace MiguModelViewer.Renderer
 
         public void Render()
         {
-            foreach(GLVertexSet set in Sets)
+            Shader.Uniform("uModel", Model);
+
+            foreach (GLVertexSet set in Sets)
             {
-                Shader.Uniform("uModel", Model);
                 set.Render(Shader);
             }
         }
