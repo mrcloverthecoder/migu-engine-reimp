@@ -14,7 +14,7 @@ namespace MiguLibrary.Objects
         public Matrix4x4 Pose;
         public Vector3 Position;
         // For other purposes
-        public Vector4 Rotation = new Vector4(0.0f, 0.0f, 0.0f, 0.0f);
+        public Vector4 Rotation;
         public short ParentId;
         public short ChildId;
         // I don't like to do this but this seems to be important
@@ -28,21 +28,7 @@ namespace MiguLibrary.Objects
             mUnk0 = unk0;
             ParentId = parentId;
             ChildId = childId;
-        }
-
-        public static Bone Read(EndianBinaryReader reader)
-        {
-            string name = reader.ReadString(StringBinaryFormat.FixedLength, 32);
-            Matrix4x4 pose = reader.ReadMatrix4x4();
-            Vector3 position = reader.ReadVector3(true);
-            reader.SeekCurrent(0x04);
-            // TEST.BMD has a slightly different structure here, but I'm not worried in supporting it
-            int unk0 = reader.ReadInt32();
-            short parentId = reader.ReadInt16();
-            short childId = reader.ReadInt16();
-            reader.SeekCurrent(0x08);
-
-            return new Bone(name, pose, position, unk0, parentId, childId);
+            Rotation = Vector4.Zero;
         }
     }
 }

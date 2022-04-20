@@ -7,9 +7,15 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MiguLibrary", "MiguLibrary\
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "MiguLibrary.Tests", "MiguLibrary.Tests", "{52C9E5A4-99FE-41D2-A608-F64DA8AF3334}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Apps", "Apps", "{27D9F064-1439-4224-978A-D6DF28D007F1}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MiguModelViewer", "MiguLibrary.Tests\MiguModelViewer\MiguModelViewer.csproj", "{65EF295A-F39D-4A59-ACB4-EDD3F3656775}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MiguEngine", "MiguEngine\MiguEngine.csproj", "{941E7A31-4F75-4DB1-9910-73E6DB7B50B2}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Deps", "Deps", "{2E274884-BA2E-455D-A4D4-19826A2927A6}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ImGuizmo.NET", "..\ImGui.NET-d98aeab2c60bc20874c677b0de8f0dc9e973523c\src\ImGuizmo.NET\ImGuizmo.NET.csproj", "{91F03D13-E960-4DF7-A36C-F1A4BB80A7F2}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ImGui.NET", "..\ImGui.NET-d98aeab2c60bc20874c677b0de8f0dc9e973523c\src\ImGui.NET\ImGui.NET.csproj", "{A1BAC869-D752-4AF3-B2AF-93420CED989E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -25,12 +31,26 @@ Global
 		{65EF295A-F39D-4A59-ACB4-EDD3F3656775}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{65EF295A-F39D-4A59-ACB4-EDD3F3656775}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{65EF295A-F39D-4A59-ACB4-EDD3F3656775}.Release|Any CPU.Build.0 = Release|Any CPU
+		{941E7A31-4F75-4DB1-9910-73E6DB7B50B2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{941E7A31-4F75-4DB1-9910-73E6DB7B50B2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{941E7A31-4F75-4DB1-9910-73E6DB7B50B2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{941E7A31-4F75-4DB1-9910-73E6DB7B50B2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{91F03D13-E960-4DF7-A36C-F1A4BB80A7F2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{91F03D13-E960-4DF7-A36C-F1A4BB80A7F2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{91F03D13-E960-4DF7-A36C-F1A4BB80A7F2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{91F03D13-E960-4DF7-A36C-F1A4BB80A7F2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1BAC869-D752-4AF3-B2AF-93420CED989E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1BAC869-D752-4AF3-B2AF-93420CED989E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1BAC869-D752-4AF3-B2AF-93420CED989E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1BAC869-D752-4AF3-B2AF-93420CED989E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{65EF295A-F39D-4A59-ACB4-EDD3F3656775} = {52C9E5A4-99FE-41D2-A608-F64DA8AF3334}
+		{91F03D13-E960-4DF7-A36C-F1A4BB80A7F2} = {2E274884-BA2E-455D-A4D4-19826A2927A6}
+		{A1BAC869-D752-4AF3-B2AF-93420CED989E} = {2E274884-BA2E-455D-A4D4-19826A2927A6}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {16E80F0A-DA47-4A75-AD75-64ABB2BCAAE5}

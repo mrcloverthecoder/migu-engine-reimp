@@ -3,16 +3,22 @@ using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using MiguLibrary.IO;
 
 namespace MiguLibrary.Motions
 {
     public class Motion
     {
-        public string Name = String.Empty;
+        public string Name;
         public List<MotionBone> Bones;
+        public List<MotionMorph> Morphs;
 
+        public Motion()
+        {
+            Name = String.Empty;
+            Bones = new List<MotionBone>();
+            Morphs = new List<MotionMorph>();
+        }
 
         public void Read(EndianBinaryReader reader)
         {
@@ -21,20 +27,24 @@ namespace MiguLibrary.Motions
 
             reader.SeekCurrent(12);
 
-            bool hasMotion = reader.ReadInt32() == 1;
-            bool hasSkin = reader.ReadInt32() == 1;
+            int motionCount = reader.ReadInt32();   // Bones
+            int skinCount = reader.ReadInt32();     // Morphs
+            int materialCount = reader.ReadInt32(); // Material animations
 
-            reader.SeekCurrent(4);
+            bool hasMotion = motionCount > 0;
+            bool hasSkin = skinCount > 0;
+            bool hasMtr = materialCount > 0;
 
-            Bones = new List<MotionBone>();
-
-            if(reader.ReadSignature("B3D_MTN", 8))
+            if(hasMotion)
             {
-                reader.SeekCurrent(16);
+                if (!reader.ReadSignature("B3D_MTN", 0x08))
+                    throw new Exception("Invalid structure");
+
+                reader.SeekCurrent(0x10);
 
                 int boneCount = reader.ReadInt32();
 
-                reader.SeekCurrent(4);
+                reader.SeekCurrent(0x04);
 
                 List<int> frameCountCache = new List<int>();
 
@@ -50,11 +60,11 @@ namespace MiguLibrary.Motions
 
                     bone.Index = reader.ReadInt32();
 
-                    reader.SeekCurrent(4);
+                    reader.SeekCurrent(0x04);
 
                     bone.Type = (MotionBoneType)reader.ReadInt32();
 
-                    reader.SeekCurrent(8);
+                    reader.SeekCurrent(0x08);
 
                     Bones.Add(bone);
                 }
@@ -75,17 +85,12 @@ namespace MiguLibrary.Motions
                         else if(Bones[i].Type == MotionBoneType.RotTrans)
                         {
                             // Read rotation at its offset first
-                            reader.ReadAtOffset(reader.Position + (16 * frameCountCache[i]), () =>
+                            reader.ReadAtOffset(reader.Position + (0x10 * frameCountCache[i]), () =>
                             {
                                 key.Rotation = reader.ReadVector4();
                             });
 
-                            key.Position = reader.ReadVector3() * 0.08f;
-                            //key.Position.Z *= -1.0f;
-
-                            reader.SeekCurrent(4);
-
-                            //Console.WriteLine($"CAMERA POS: {key.Translation} {key.Rotation} {reader.Position} {}");
+                            key.Position = reader.ReadVector4(2);
                         }
 
                         Bones[i].Keyframes[j] = key;
@@ -94,9 +99,49 @@ namespace MiguLibrary.Motions
                     // Jump the rotation data
                     if (Bones[i].Type == MotionBoneType.RotTrans)
                     {
-                        Console.WriteLine($"BMM position: {reader.Position}");
-                        reader.SeekCurrent(16 * frameCountCache[i]);
-                        Console.WriteLine($"BMM position 02: {reader.Position}");
+                        reader.SeekCurrent(0x10 * frameCountCache[i]);
+
+                    }
+                }
+            }
+
+            // Morph
+            if(hasSkin)
+            {
+                if (!reader.ReadSignature("B3D_SKN", 0x08))
+                    throw new Exception("Invalid structure");
+
+                reader.SeekCurrent(0x0C);
+                int morphCount = reader.ReadInt32();
+                reader.SeekCurrent(0x08);
+
+                for(int i = 0; i < morphCount; i++)
+                {
+                    MotionMorph morph = new MotionMorph();
+                    morph.Name = reader.ReadString(StringBinaryFormat.FixedLength, 0x10);
+                    morph.Index = reader.ReadInt32();
+
+                    int frameCount = reader.ReadInt32();
+                    morph.Keyframes = new MorphKeyframe[frameCount];
+
+                    reader.SeekCurrent(0x08);
+
+                    Morphs.Add(morph);
+                }
+
+                // Re-looping to get the actual frame data
+                for(int i = 0; i < morphCount; i++)
+                {
+                    for(int j = 0; j < Morphs[i].Keyframes.Length; j++)
+                    {
+                        MorphKeyframe key = new MorphKeyframe();
+
+                        key.Frame = reader.ReadInt32();
+                        key.Progress = reader.ReadSingle();
+
+                        reader.SeekCurrent(0x08);
+
+                        Morphs[i].Keyframes[j] = key;
                     }
                 }
             }

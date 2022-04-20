@@ -84,11 +84,6 @@ namespace MiguLibrary
             return angle;
         }
 
-        public static Vector2 Normalize(Vector2 pos, Vector2 max)
-        {
-            return new Vector2(pos.X / max.X, pos.Y / max.Y);
-        }
-
         public static int RoundUp(int value, int multiple)
         {
             // Return the same number if it is already a multiple

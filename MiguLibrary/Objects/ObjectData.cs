@@ -2,10 +2,11 @@
 using System.IO;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 using MiguLibrary.IO;
-using System.Numerics;
+using MiguLibrary.Textures;
 
 namespace MiguLibrary.Objects
 {
@@ -21,10 +22,34 @@ namespace MiguLibrary.Objects
         public List<FaceSet> FaceSets;
         public List<Morph> Morphs;
 
-        public bool IsChara = false;
-        public string Name = "";
+        public Dictionary<string, TextureResource> Textures;
 
-        public void Read(EndianBinaryReader reader)
+        public ObjectData()
+        {
+            PhysicsNumber = 1;
+            Materials = new List<Material>();
+            Bones = new List<Bone>();
+            VertexSets = new List<VertexSet>();
+            FaceSets = new List<FaceSet>();
+            Morphs = new List<Morph>();
+            Textures = new Dictionary<string, TextureResource>();
+        }
+
+        public static ObjectData Load(string path) => Load(path, null);
+
+        public static ObjectData Load(string path, string texBasePathAdd)
+        {
+            ObjectData obj = new ObjectData();
+
+            using (var reader = new EndianBinaryReader(File.Open(path, FileMode.Open), Encoding.GetEncoding(932), Endianness.LittleEndian))
+            {
+                obj.Load(reader, path, texBasePathAdd);
+            }
+
+            return obj;
+        }
+
+        private void Load(EndianBinaryReader reader, string path, string texBasePathAdd)
         {
             if (!reader.ReadSignature("B3D OBJECT DATA", 16))
                 throw new Exception($"File provided is not B3D Object Data!");
@@ -43,11 +68,22 @@ namespace MiguLibrary.Objects
             for (int i = 0; i < textureCount; i++)
                 textureNames.Add(reader.ReadString(StringBinaryFormat.FixedLength, 32));
 
+            string texturePath = Path.GetDirectoryName(path) + "/" + (String.IsNullOrEmpty(texBasePathAdd) ? "" : texBasePathAdd) + "/PSP";
+            for(int i = 0; i < textureCount; i++)
+            {
+                Textures[textureNames[i]] = TextureResource.Load(texturePath + "/" + Path.ChangeExtension(textureNames[i], "gim"));
+            }
+
+            foreach(string s in textureNames)
+            {
+                Console.WriteLine($"Tex name: {s}");
+            }
+
             int materialCount = reader.ReadInt32();
 
             reader.SeekCurrent(0x10);
 
-            Materials = new List<Material>();
+            // Read materials
             for(int i = 0; i < materialCount; i++)
             {
                 reader.SeekCurrent(0x06);
@@ -56,6 +92,9 @@ namespace MiguLibrary.Objects
 
                 string textureName = "";
                 bool hasDiffuseTexture = true;
+
+                /*Console.WriteLine(texNameIndex);
+                Console.WriteLine(textureNames[texNameIndex]);*/
 
                 if (texNameIndex != -1)
                     textureName = textureNames[texNameIndex];
@@ -72,10 +111,19 @@ namespace MiguLibrary.Objects
             int boneCount = reader.ReadInt32();
             reader.SeekCurrent(0x10);
 
-            Bones = new List<Bone>();
             for(int i = 0; i < boneCount; i++)
             {
-                Bones.Add(Bone.Read(reader));
+                string name = reader.ReadString(StringBinaryFormat.FixedLength, 32);
+                Matrix4x4 pose = reader.ReadMatrix4x4();
+                Vector3 position = reader.ReadVector3(true);
+                reader.SeekCurrent(0x04);
+                // TEST.BMD has a slightly different structure here, but I'm not worried in supporting it
+                int unk0 = reader.ReadInt32();
+                short parentId = reader.ReadInt16();
+                short childId = reader.ReadInt16();
+                reader.SeekCurrent(0x08);
+
+                Bones.Add(new Bone(name, pose, position, unk0, parentId, childId));
             }
 
             // This now would be the IK count, then 12 bytes and finally the IK struct, but I'll just skip it
@@ -86,7 +134,6 @@ namespace MiguLibrary.Objects
             
             int vertexSetCount = reader.ReadInt32();
 
-            VertexSets = new List<VertexSet>();
             for (int i = 0; i < vertexSetCount; i++)
             {
                 reader.SeekCurrent(0x06);
@@ -124,8 +171,6 @@ namespace MiguLibrary.Objects
             }
 
             int faceSetCount = reader.ReadInt32();
-
-            FaceSets = new List<FaceSet>();
             for (int i = 0; i < faceSetCount; i++)
             {
                 reader.SeekCurrent(0x04);
@@ -158,7 +203,6 @@ namespace MiguLibrary.Objects
             int morphCount = reader.ReadInt32();
             reader.SeekCurrent(0x0C);
 
-            Morphs = new List<Morph>();
             for(int i = 0; i < morphCount; i++)
             {
                 reader.SeekCurrent(0x04);
@@ -176,28 +220,11 @@ namespace MiguLibrary.Objects
                 for(int j = 0; j < Morphs[i].Morphs.Length; j++)
                 {
                     int id = reader.ReadInt32();
-                    Vector3 transform = reader.ReadVector3() * 0.08f;
+                    Vector3 transform = reader.ReadVector3(true);
 
                     Morphs[i].Morphs[j] = new VertexMorph(id, transform);
                 }
             }
-        }
-
-        public static ObjectData FromFile(string path, string name = "NO_NAME_SET")
-        {
-            ObjectData obj = new ObjectData();
-
-            using(var reader = new EndianBinaryReader(File.Open(path, FileMode.Open), Encoding.GetEncoding(932), Endianness.LittleEndian))
-            {
-                obj.Read(reader);
-            }
-
-            obj.IsChara = Path.GetFileName(path).Split('.')[0].ToUpper().EndsWith("MIG");
-            obj.Name = name;
-
-            Console.WriteLine($"OBJECT NAME {obj.Name}");
-
-            return obj;
         }
     }
 }

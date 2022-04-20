@@ -23,18 +23,18 @@ namespace MiguLibrary.Objects
 
     public class VertexMorph
     {
-        public int Id;
+        public int Index;
         public Vector3 Transform;
 
         public VertexMorph(int id, Vector3 trans)
         {
-            Id = id;
+            Index = id;
             Transform = trans;
         }
 
         public VertexMorph()
         {
-            Id = 0;
+            Index = 0;
             Transform = new Vector3(0.0f, 0.0f, 0.0f);
         }
     }

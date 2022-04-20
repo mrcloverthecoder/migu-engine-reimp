@@ -31,8 +31,6 @@ namespace MiguLibrary.Scene
             cut.StartFrame = reader.ReadInt32();
             cut.Length = reader.ReadInt32();
 
-            Console.WriteLine($"{cut.StartFrame} {cut.Length}");
-
             // Unknown data
             reader.SeekCurrent(8 + (4 * 16));
 
@@ -46,24 +44,21 @@ namespace MiguLibrary.Scene
                 // Flags; Not sure what they serve for right now
                 reader.SeekCurrent(4);
 
-                point.StartPosition = reader.ReadVector3(true);
-                point.MidwayPosition = reader.ReadVector3(true);
-                point.EndPosition = reader.ReadVector3(true);
+                point.MidPoint = reader.ReadVector3(true);
+                point.EndPoint = reader.ReadVector3(true);
+                point.StartPoint = reader.ReadVector3(true);
                 point.FadeIn = reader.ReadSingle();
                 point.FadeOut = reader.ReadSingle();
 
                 cut.TranslationPoints[i] = point;
             }
 
-            Console.WriteLine("AA");
             int unkPointCount = reader.ReadInt32();
             reader.SeekCurrent(20 * unkPointCount);
 
-            Console.WriteLine("BB");
             int rotationPointCount = reader.ReadInt32();
             cut.RotationPoints = new RotationPoint[rotationPointCount];
 
-            Console.WriteLine($"CC {reader.Position}");
             for (int i = 0; i < rotationPointCount; i++)
             {
                 RotationPoint point = new RotationPoint();
@@ -75,20 +70,15 @@ namespace MiguLibrary.Scene
                 reader.SeekCurrent(16);
 
                 point.Rotation = reader.ReadQuaternion();
-                Console.WriteLine(point.Rotation);
 
                 cut.RotationPoints[i] = point;
             }
 
-            Console.WriteLine("DD");
             int unk1PointCount = reader.ReadInt32();
             reader.SeekCurrent(20 * unk1PointCount);
 
-            Console.WriteLine("EE");
             int unk2PointCount = reader.ReadInt32();
             reader.SeekCurrent(20 * unk2PointCount);
-
-            Console.WriteLine($"BSX POS 1: {reader.Position}");
 
             return cut;
         }
@@ -96,9 +86,9 @@ namespace MiguLibrary.Scene
 
     public struct TranslationPoint
     {
-        public Vector3 StartPosition;
-        public Vector3 MidwayPosition;
-        public Vector3 EndPosition;
+        public Vector3 MidPoint;
+        public Vector3 EndPoint;
+        public Vector3 StartPoint;
         public float FadeIn;
         public float FadeOut;
     }

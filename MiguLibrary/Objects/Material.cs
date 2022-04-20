@@ -24,7 +24,5 @@ namespace MiguLibrary.Objects
             AmbientColor = ambientColor;
             SpecularColor = specularColor;
         }
-
-        // Materials use texture names defined in an external list so I won't implement the Read method here
     }
 }

@@ -157,13 +157,28 @@ namespace MiguLibrary.IO
 
             return vector;
         }
-        public Vector4 ReadVector4()
+
+        public Vector4 ReadVector4(int applyTransformFixesMode = 0)
         {
             Vector4 vector = new Vector4();
             vector.X = ReadSingle();
             vector.Y = ReadSingle();
             vector.Z = ReadSingle();
             vector.W = ReadSingle();
+
+            if(applyTransformFixesMode == 1)
+            {
+                vector.X *= 0.08f;
+                vector.Y *= 0.08f;
+                vector.Z *= 0.08f;
+                vector.W *= 0.08f;
+            }
+            else if(applyTransformFixesMode == 2)
+            {
+                vector.X *= 0.08f;
+                vector.Y *= 0.08f;
+                vector.Z *= 0.08f;
+            }
 
             return vector;
         }

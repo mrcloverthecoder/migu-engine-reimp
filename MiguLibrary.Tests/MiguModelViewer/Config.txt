@@ -1,4 +1,4 @@
 ﻿C:/Eduardo/migu/DATA
 C:/Eduardo/migu/STATIC
-960x540
+960x544
 60.0

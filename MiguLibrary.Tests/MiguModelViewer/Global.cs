@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using OpenTK;
+using MiguModelViewer.Structs;
 
 namespace MiguModelViewer
 {
@@ -41,9 +42,32 @@ namespace MiguModelViewer
         }
     }
 
+    public class Lists
+    {
+        public static FileListInfo[] MotionList;
+
+        static Lists()
+        {
+            MotionList = SpecialStructReader.ReadFileList("Resource/MotionList.txt");
+        }
+    }
+
+    public class Tables
+    {
+        public static CostumeTable[] Costumes;
+
+        static Tables()
+        {
+            Costumes = TableLoader.LoadCosTable("Resource/CostumeTable.txt");
+        }
+    }
+
     public class State
     {
-        public static int SceneId = 10;
+        public static int SelectedGumi = 14;
+        public static int SceneId = 29;
+
+        public static int Points = 0;
     }
 
     public class Config
@@ -54,5 +78,11 @@ namespace MiguModelViewer
         public static float Height = 540.0f;
 
         public static float Framerate = 60.0f;
+        public static float Delta { get => Framerate / 30.0f; }
+        public static float InverseDelta { get => 30.0f / Framerate; }
+
+        // For 2d
+        public static float ScaleX { get => Width / 480.0f; }
+        public static float ScaleY { get => Height / 272.0f; }
     }
 }

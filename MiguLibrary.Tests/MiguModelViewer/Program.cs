@@ -23,6 +23,8 @@ namespace MiguModelViewer
             if (args.Length > 0)
             {
                 State.SceneId = int.Parse(args[0]);
+                if (args.Length > 1)
+                    State.SelectedGumi = int.Parse(args[1]);
             }
 
             Config.Width = (float)width;
@@ -30,6 +32,8 @@ namespace MiguModelViewer
             Config.Framerate = framerate;
 
             Cache.ReadTextureAlphaCache();
+
+            string a = Lists.MotionList[0].Name;
 
             using (Window w = new Window(width, height, "MiguModelViewer"))
             {

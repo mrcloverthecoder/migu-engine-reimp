@@ -4,7 +4,9 @@ using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using OpenTK;
 using OpenTK.Input;
@@ -17,6 +19,12 @@ using MiguLibrary.Objects;
 using MiguLibrary.Motions;
 using MiguModelViewer.UI;
 using ImGuiNET;
+using MiguEngine.Textures;
+using MiguLibrary.Textures;
+using MiguLibrary.Sprites;
+using MiguModelViewer.Menus;
+using MiguModelViewer.Animations;
+using MiguEngine;
 
 namespace MiguModelViewer
 {
@@ -25,45 +33,40 @@ namespace MiguModelViewer
         private static DebugProc _debugProcCallback = Callback.DebugCallback;
         private static GCHandle _debugProcCallbackHandle = GCHandle.Alloc(_debugProcCallback);
 
-        GLFont mFont;
-
-        Vector2 mLastCursorPos = new Vector2(0.0f, 0.0f);
-
-        bool isPressed = false;
-
         KeyboardState lastState = new KeyboardState();
 
-        Scene mScenePlayer;
+        private ScenePlayer mScenePlayer;
 
         private ImGuiController mController;
 
-        private int mOldSelectedIndex = -1;
-        private int mSelectedIndex = 0;
+        private Texture mCharaDiagMdlTex;
+        private int mImSelectedCostume = 0;
+        private int mImSubSelectedCostume = 0;
+        private int mImOldSelectedCostume = -1;
+        private bool mReloadPhysics = true;
 
-        private int mPreviouslyChosenTest = -1;
-        private int mCurrentChosenTest = 0;
+        private ImFontPtr mFontPtr;
 
-        private int mMotionOldSelectedIndex = -1;
-        private int mMotionSelectedIndex = 11;
+        private bool mDebugOverlayEnabled = false;
 
-        private Tests mCurrentTest;
+        private Texture mLoadingTex;
+        private Texture Kira1, Kira2;
 
-        private Dictionary<string, string> mLoadableObjects;
-        private Dictionary<string, string> mLoadableMotions;
+        private Stopwatch mTime;
 
-        private string[] mBoneNames = new string[60]
-        {
-            "Center", "UpperBody", "UpperBody2", "Neck", "Head", "RightEye", "LeftEye", "RightHair", "LeftHair", "LeftShoulder",
-            "LeftArm", "LeftElbow", "LeftHandTwist", "LeftWrist", "LeftThumb0", "LeftThumb1", "LeftIndex1", "LeftIndex2", "LeftMiddle1", "LeftMiddle2",
-            "LeftLittle1", "LeftLittle2", "LeftRing1", "LeftRing2", "RightShoulder", "RightArm", "RightElbow", "RightHandTwist", "RightWrist", "RightThumb0",
-            "RightThumb1", "RightIndex1", "RightIndex2", "RightMiddle1", "RightMiddle2", "RightLittle1",
-            "RightLittle2", "RightRing1", "RightRing2", "LeftChest", "RightChest", "LowerBody", "RightFoot", "RightKnee", "RightAnkle", "RightAnkle2",
-            "LeftFoot", "LeftKnee", "LeftAnkle", "LeftAnkle2", "SKIRTm_0_0", "SKIRTm_0_1", "SKIRTm_0_2", "SKIRTm_0_3", "SKIRTm_0_4", "SKIRTm_1_0", "SKIRTm_1_1", "SKIRTm_1_2", "SKIRTm_1_3", "SKIRTm_1_4"
-        };
+        private int mSelectedLightConfig = 0;
+        private int mSelectedLightConfigType = 3;
+
+        private MiguModelViewer.Menus.Common.Menu mCurMenu;
+
+        CameraAnimation AnimationBuilder;
+
+        Camera Camera;
 
         public Window(int width, int height, string title) : base(width, height, GraphicsMode.Default, title, GameWindowFlags.Default, DisplayDevice.Default, 3, 3, GraphicsContextFlags.Default)
         {
             Title = $"{title} | OpenGL {GL.GetString(StringName.Version)} - {GL.GetString(StringName.Vendor)}";
+            Camera = new Camera();
         }
 
         protected override void OnLoad(EventArgs e)
@@ -72,120 +75,141 @@ namespace MiguModelViewer
             GL.Enable(EnableCap.DebugOutput);
             GL.Enable(EnableCap.DebugOutputSynchronous);
 
+            mTime = new Stopwatch();
+
+            SpriteDrawer.Init();
+
+            AnimationBuilder = new CameraAnimation();
+
+            SpriteSet set = SpriteSet.FromFile($"{Config.DataPath}/SPRITE/LOADING/LOADING.BSD");
+
+            mLoadingTex = new Texture(TextureResource.Load($"{Config.DataPath}/SPRITE/LOADING/PSP/LD000.GIM"));
+
+            SpriteDrawer.Draw(mLoadingTex, 0, 0, new Vector2(0, 0), new Vector2(Config.Width, Config.Height));
+            Context.SwapBuffers();
+
+            Kira1 = new Texture(TextureResource.Load($"{Config.DataPath}/UI/0000_CIRCULARLIST/PSP/HART_1.GIM"));
+            Kira2 = new Texture(TextureResource.Load($"{Config.DataPath}/UI/0000_CIRCULARLIST/PSP/HART_2.GIM"));
+
             mController = new ImGuiController((int)Config.Width, (int)Config.Height);
 
-            mLoadableObjects = new Dictionary<string, string>();
-            foreach(string dir in Directory.GetDirectories(Config.DataPath + "/OBJECTS"))
-            {
-                foreach (string file in Directory.GetFiles(dir))
-                {
-                    string[] split = dir.Replace("\\", "/").Split('/');
+            ImGuiIOPtr io = ImGui.GetIO();
+            mFontPtr = io.Fonts.AddFontFromFileTTF("Resource/Font/NotoSansJP-Medium.otf", 17.0f, null, io.Fonts.GetGlyphRangesChineseFull());
+            io.Fonts.Build();
+            mController.RecreateFontDeviceTexture();
 
-                    string name = split[split.Length - 1];
-                    string filename = file;
-
-                    if (!file.ToUpper().EndsWith("BMD"))
-                        continue;
-
-                    if (mLoadableObjects.ContainsKey(name))
-                        name = name + "/" + Path.GetFileName(filename);
-
-                    mLoadableObjects[name] = filename;
-                    Console.WriteLine($"AAA: {name} {filename}");
-                }
-            }
-
-            mLoadableMotions = new Dictionary<string, string>();
-            foreach (string file in Directory.GetFiles(Config.DataPath + "/MOTIONS"))
-            {
-                string name = Path.GetFileName(file).Replace(".BMM", "").ToUpper();
-                string filename = file;
-
-                if (!file.ToUpper().EndsWith("BMM"))
-                    continue;
-
-                mLoadableMotions[name] = filename;
-                Console.WriteLine($"MMM: {name} {filename}");
-            }
-
-
-            //mController.AddFont("Resource/Font/NotoSansJP-Regular.otf", 20.0f);
-
-            //mController.RecreateFontDeviceTexture();
-
-            /*Console.WriteLine(Matrix4.CreateOrthographic(960.0f, 540.0f, 0.01f, 100.0f));
-            Console.WriteLine();
-            Console.WriteLine(Matrix4.CreateOrthographicOffCenter(0.0f, 960.0f, 0.0f, 540.0f, 1f, -1f));*/
             GL.Viewport(0, 0, Width, Height);
-            //GL.ClearColor(0.392f, 0.584f, 0.929f, 1.0f);
+
             GL.ClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 
-            mScenePlayer = new Scene(State.SceneId);
+            mScenePlayer = new ScenePlayer(State.SceneId);
 
-            mFont = new GLFont("Resource/Font/map_seurat_pro_b.xml");
+            mCurMenu = new MainMenu();
 
-            /*mCharaShader = new GLShader(File.ReadAllText("Resource/Shader/OBJ_01.vert.shp"), File.ReadAllText("Resource/Shader/OBJ_01.frag.shp"));
-
-            mStageShader = new GLShader(File.ReadAllText("Resource/Shader/OBJ_01.vert.shp"), File.ReadAllText("Resource/Shader/OBJ_01.frag.shp"));
-            
-            using (EndianBinaryReader reader = new EndianBinaryReader(File.Open("tests/OBJ_MIG.BMD", FileMode.Open), Encoding.GetEncoding(932), Endianness.LittleEndian))
-            {
-                ObjectData obj = new ObjectData();
-                obj.Read(reader);
-
-                mSet = new GLObjectData(obj);
-
-                //Console.WriteLine($"Bone count: {obj.Bones.Count}");
-                /*foreach (Bone bone in obj.Bones)
-                    Console.WriteLine($"{bone.Pose}");*/
-            /*sets = new List<GLVertexSet>();
-            for(int i = 0; i < obj.VertexSets.Count; i++)
-            {
-                sets.Add(new GLVertexSet(obj.VertexSets[i], obj.FaceSets[i]));
-            }*/
-
-            /*Console.WriteLine($"Set #0 -> {obj.VertexSets[0].Positions.Length}");
-            for(int j = 0; j < obj.VertexSets[0].Positions.Length; j++)
-                Console.WriteLine($"    {obj.VertexSets[0].Positions[j]}");
-            Console.WriteLine($"Set #1");
-            for (int j = 0; j < obj.FaceSets[0].FaceIndices.Length; j++)
-                Console.WriteLine($"    {obj.FaceSets[0].FaceIndices[j]}");
-        }
-
-        using(EndianBinaryReader reader = new EndianBinaryReader(File.Open("tests/OBJBG_STG.BMD", FileMode.Open), Encoding.GetEncoding(932), Endianness.LittleEndian))
-        {
-            ObjectData obj = new ObjectData();
-            obj.Read(reader);
-
-            mSet1 = new GLObjectData(obj);
-
-            foreach (Bone bone in obj.Bones)
-                Console.WriteLine($"{bone.Name} {bone.ParentId} {bone.ChildId}");
-        }
-
-        using (EndianBinaryReader reader = new EndianBinaryReader(File.Open("tests/A03.BMM", FileMode.Open), Encoding.GetEncoding(932), Endianness.LittleEndian))
-        {
-            mMot = new Motion();
-            mMot.Read(reader);
-
-            foreach (MotionBone bone in mMot.Bones)
-            {
-                Console.WriteLine($"{bone.Name} {bone.Index} {bone.Type}");
-                foreach (Keyframe key in bone.Keyframes)
-                {
-                    Console.WriteLine($"{key.Frame} {key.Rotation}");
-                }
-            }
-        }*/
+            mCharaDiagMdlTex = new Texture(TextureResource.Load($"{Config.DataPath}/UI/PSP/{Tables.Costumes[mImSelectedCostume].SubCostumes[mImSubSelectedCostume].ThumbnailName}.gim"));
 
             Camera.FieldOfViewAngle = 45.0f;
+
+            mTime.Start();
+
+            mSelectedLightConfigType = (int)mScenePlayer.LightSettings[mSelectedLightConfig].Type;
 
             base.OnLoad(e);
         }
 
-        protected override void OnUnload(EventArgs e)
+        protected override void OnUpdateFrame(FrameEventArgs e)
         {
-            base.OnUnload(e);
+            if (!Focused) return;
+
+            if (mImSelectedCostume != mImOldSelectedCostume)
+            {
+                // Clear old texture before updating
+                mCharaDiagMdlTex.Dispose();
+
+                mCharaDiagMdlTex = new Texture(TextureResource.Load($"{Config.DataPath}/UI/PSP/{Tables.Costumes[mImSelectedCostume].SubCostumes[mImSubSelectedCostume].ThumbnailName}.gim"));
+
+                mImOldSelectedCostume = mImSelectedCostume;
+            }
+
+            KeyboardState state = Keyboard.GetState();
+
+            float speed = 0.1f;
+
+            if (state.IsKeyDown(Key.LControl))
+            {
+                Console.WriteLine(Camera.Position);
+                speed = 0.05f;
+            }
+
+            if (state.IsKeyDown(Key.W) || state.IsKeyDown(Key.Up))
+                Camera.Position += Camera.Front * speed;
+            if (state.IsKeyDown(Key.A) || state.IsKeyDown(Key.Left))
+                Camera.Position -= Camera.Right * speed;
+            if (state.IsKeyDown(Key.S) || state.IsKeyDown(Key.Down))
+                Camera.Position -= Camera.Front * speed;
+            if (state.IsKeyDown(Key.D) || state.IsKeyDown(Key.Right))
+                Camera.Position += Camera.Right * speed;
+            if (state.IsKeyDown(Key.Space))
+                Camera.Position += new Vector3(0.0f, 0.7f, 0.0f) * speed;
+            if (state.IsKeyDown(Key.LShift))
+            {
+                if (!state.IsKeyDown(Key.WinLeft))
+                    Camera.Position += new Vector3(0.0f, -0.7f, 0.0f) * speed;
+            }
+            if (state.IsKeyDown(Key.J))
+            {
+                Camera.Yaw += 1.0f;
+            }
+            if (state.IsKeyDown(Key.L))
+            {
+                Camera.Yaw -= 1.0f;
+            }
+            if (state.IsKeyDown(Key.F1) && !lastState.IsKeyDown(Key.F1))
+            {
+                /*if (Camera.Mode == CameraMode.FollowTarget)
+                    Camera.Mode = CameraMode.LockAtTarget;
+                else
+                    Camera.Mode = CameraMode.FollowTarget;*/
+
+                mScenePlayer.SwitchState();
+            }
+            if (state.IsKeyDown(Key.F2) && !lastState.IsKeyDown(Key.F2))
+            {
+                mScenePlayer.Reset();
+            }
+            if (state.IsKeyDown(Key.F3) && !lastState.IsKeyDown(Key.F3))
+            {
+                mDebugOverlayEnabled = mDebugOverlayEnabled == false;
+            }
+
+            if(state.IsKeyDown(Key.F10) && !lastState.IsKeyDown(Key.F10))
+            {
+                AnimationBuilder.PositionKeyframes.Add(new Vector3Keyframe()
+                {
+                    Frame = mScenePlayer.CurrentFrame,
+                    Value = Camera.Position.ToNumerics()
+                });
+
+                AnimationBuilder.RotationKeyframes.Add(new Vector3Keyframe()
+                {
+                    Frame = mScenePlayer.CurrentFrame,
+                    Value = new Sn.Vector3(Camera.Pitch, Camera.Yaw, 0.0f)
+                });
+            }
+
+            if (state.IsKeyDown(Key.F11) && !lastState.IsKeyDown(Key.F11))
+            {
+                Console.WriteLine("aaa");
+                AnimationBuilder.Write("scene001_cam.anim");
+            }
+
+            mScenePlayer.Update();
+            //mMainMenu.Update();
+            //mCurMenu.Update();
+
+            lastState = state;
+
+            base.OnUpdateFrame(e);
         }
 
         protected override void OnRenderFrame(FrameEventArgs e)
@@ -196,269 +220,136 @@ namespace MiguModelViewer
 
             GL.Enable(EnableCap.DepthTest);
 
-            //GL.Enable(EnableCap.CullFace);
-            //GL.FrontFace(FrontFaceDirection.Cw);
-
             GL.Enable(EnableCap.Blend);
             GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
 
             mScenePlayer.Render((float)e.Time);
-            //mCurrentTest?.Render();
-
+            //mMainMenu.Render();
+            //mCurMenu.Render();
+            
             GL.Disable(EnableCap.DepthTest);
 
-            /*mFont.RenderText(-480.0f, 250.0f, "Megupoido ja myujikku.... C Shappu!!", MiguLibrary.Color.White);
-            mFont.RenderText(-480.0f, 230.0f, $"FPS: {this.RenderFrequency.ToString("0")}", MiguLibrary.Color.White, 1.0f);
-            mFont.RenderText(-480.0f, 200.0f, $"Frame: {mCurrentFrame}");
-            mFont.RenderText(-480.0f, 180.0f, $"Camera: {Camera.Position} | {Camera.Yaw}");
-            mFont.RenderText(-480.0f, 165.0f, $"Anim is playing: {mAnimIsPlaying}");
-            if(mAnimIsPlaying)
-                mFont.RenderText(-480.0f, 140.0f, $"Anim frame: {mCurrentFrame - mAnimFrameStart}");*/
-
-            /*mFont.RenderText(10.0f, 30.0f, "< ");
-            mFont.RenderText(25.0f, 30.0f, State.SceneId.ToString());
-            mFont.RenderText(50.0f, 30.0f, ">");
-            mFont.RenderText(10.0f, 50.0f, "OK");*/
-
-            if (!ImGui.Begin("Debugging site"))
+            if (mDebugOverlayEnabled)
             {
-                ImGui.End();
-            }
+                ImGui.PushFont(mFontPtr);
 
-            ImGui.Combo("", ref mCurrentChosenTest, new string[] { "Object Test", "Motion Test" }, 2);
-
-            if (mCurrentChosenTest == 0 || mCurrentChosenTest == 1)
-            {
-                ImGui.NewLine();
-
-                ImGui.Combo("Object", ref mSelectedIndex, mLoadableObjects.Keys.ToArray(), mLoadableObjects.Count);
-            }
-
-            if (mCurrentChosenTest == 1)
-            {
-                ImGui.NewLine();
-                ImGui.Combo("Motion", ref mMotionSelectedIndex, mLoadableMotions.Keys.ToArray(), mLoadableMotions.Count);
-                ImGui.SliderInt("Motion Frame", ref mCurrentTest.CurrentFrame, 0, mCurrentTest.Get(GetAction.MotionLastFrame));
-
-                if(ImGui.Button("Play / Pause"))
+                if (ImGui.Begin($"{mScenePlayer.Id} / {mScenePlayer.SongName}"))
                 {
-                    mCurrentTest.Switch();
+                    ImGui.SliderInt("Frame", ref mScenePlayer.CurrentFrame, 0, mScenePlayer.EndFrame);
+                    ImGui.ColorEdit4("Sky color", ref mScenePlayer.ClearColor);
+                    ImGui.NewLine();
+                    if (ImGui.Button("Play / Pause"))
+                        mScenePlayer.SwitchState();
+                    ImGui.NewLine();
+
+                    ImGui.Checkbox("Enable motion lerp", ref mScenePlayer.EnableMotionLerp);
+                    if (ImGui.IsItemHovered())
+                        ImGui.SetTooltip("Don't panic if it freaks out a little when you enable.");
+
+                    ImGui.End();
                 }
-            }
 
-            /*ImGui.Checkbox("Apply inverse bind pose", ref mScenePlayer.ApplyInverseBindPose);
-            ImGui.Checkbox("Apply child transforms", ref mScenePlayer.EnableParentedTransform);
 
-            ImGui.Combo("Bone", ref mScenePlayer.SelectedBoneIndex, mBoneNames, mBoneNames.Length);
 
-            ImGui.SliderFloat("Pitch", ref mScenePlayer.SelectedBoneRotationPitch, -179.0f, 179.0f);
-            ImGui.SliderFloat("Yaw", ref mScenePlayer.SelectedBoneRotation, -179.0f, 179.0f);
-            ImGui.SliderFloat("Roll", ref mScenePlayer.SelectedBoneRotationRoll, -179.0f, 179.0f);
-
-            ImGui.Text(mScenePlayer.SelectedBoneMatrixDisp);*/
-
-            /*
-            if(ImGui.TreeNode("Objects"))
-            {
-                for(int i = 0; i < mScenePlayer.Objects.Count; i++)
+                /*
+                if(ImGui.Begin("Lighting"))
                 {
-                    if(ImGui.TreeNode($"Object {i} (IsChara: {mScenePlayer.Objects[i].IsChara})"))
+                    if (ImGui.Combo("Light", ref mSelectedLightConfig, mScenePlayer.LightSettings.Select(l => l.Id.ToString()).ToArray(), mScenePlayer.LightSettings.Length))
                     {
-                        if(ImGui.TreeNode($"Bones"))
-                        {
-                            for (int j = 0; j < mScenePlayer.Objects[i].Bones.Length; j++)
-                            {
-                                if(ImGui.TreeNode($"Bone {j} ({mScenePlayer.Objects[i].Bones[j].Name})"))
-                                {
-                                    ImGui.Text($"Position: {mScenePlayer.Objects[i].Bones[j].Position}");
-                                    ImGui.Text($"Rotation: {mScenePlayer.Objects[i].Bones[j].Rotation}");
-                                    ImGui.TreePop();
-                                }
-                            }
-
-                            ImGui.TreePop();
-                        }
-                        
-                        ImGui.TreePop();
+                        mSelectedLightConfigType = (int)mScenePlayer.LightSettings[mSelectedLightConfig].Type;
                     }
-                }
 
-                ImGui.TreePop();
-            }*/
+                    ImGui.ColorEdit3("Color", ref mScenePlayer.LightSettings[mSelectedLightConfig].Color);
+                    ImGui.SliderFloat("Intensity", ref mScenePlayer.LightSettings[mSelectedLightConfig].Intensity, 0.0f, 1.0f);
 
-            mController.Render();
+                    if(ImGui.Combo("Type", ref mSelectedLightConfigType, new string[] { "All", "Chara", "Prop", "None" }, 4))
+                    {
+                        // Update selected light's type
+                        mScenePlayer.LightSettings[mSelectedLightConfig].Type = (Structs.LightType)mSelectedLightConfigType;
+                    }
+
+                    if(ImGui.Button("Save"))
+                    {
+                        Structs.SpecialStructWriter.WriteLightSetting(mScenePlayer.LightSettings, $"Resource/Ext/SceneParameter/{mScenePlayer.Id}_light.txt");
+                    }
+                    ImGui.End();
+                }*/
+
+                /*if(ImGui.Begin("Rendering"))
+                {
+                    ImGui.Checkbox("Enable debug", ref mScenePlayer.DebugRendering);
+
+                    if(mScenePlayer.DebugRendering)
+                    {
+                        ImGui.Combo("Fragment Mode", ref mScenePlayer.FragmentMode, new string[] { "Normal", "Weights" }, 2);
+                    }
+                }*/
+                /*
+                if(ImGui.Begin("Chara"))
+                {
+                    ImGui.Image((IntPtr)mCharaDiagMdlTex.Id, new Sn.Vector2(mCharaDiagMdlTex.Width, mCharaDiagMdlTex.Height));
+
+                    if(ImGui.Combo("Costume", ref mImSelectedCostume, Tables.Costumes.Select(o => o.Name).ToArray(), Tables.Costumes.Length) || ImGui.Combo("Sub", ref mImSubSelectedCostume, Tables.Costumes[mImSelectedCostume].SubCostumes.Select(o => o.Name).ToArray(), Tables.Costumes[mImSelectedCostume].SubCostumes.Length))
+                    {
+                        // Reload thumb
+                        mCharaDiagMdlTex = new GLTexture(Texture.Load($"{Config.DataPath}/UI/PSP/{Tables.Costumes[mImSelectedCostume].SubCostumes[mImSubSelectedCostume].ThumbnailName}.gim"));
+                    }
+
+                    int chrIndex = 1;
+                    int i = 0;
+                    foreach(SceneObject obj in mScenePlayer.SceneInfo.Objects)
+                    {
+                        foreach(MotionEntry mot in obj.Motions)
+                        {
+                            if(mot.Motion.Name == mScenePlayer.Id)
+                                chrIndex = i;
+                        }
+                        i++;
+                    }
+
+                    ImGui.Text($"Note: {Tables.Costumes[mImSelectedCostume].Info}");
+                    ImGui.Text($"Shop price: ${Tables.Costumes[mImSelectedCostume].SubCostumes[mImSubSelectedCostume].ShopPrice}");
+                    ImGui.NewLine();
+
+                    if(ImGui.Button("Load chara"))
+                    {
+                        // Dispose old object first
+                        mScenePlayer.SceneInfo.Objects[chrIndex].Object.Dispose();
+
+                        // Now load the new model
+                        string path = Config.DataPath + "/" + Tables.Costumes[mImSelectedCostume].BasePath + "/" + Tables.Costumes[mImSelectedCostume].ObjectFilename;
+
+                        string texPath = Tables.Costumes[mImSelectedCostume].SubCostumes[mImSubSelectedCostume].BasePath;
+                        texPath = Path.GetFileName(texPath.Replace('/', Path.DirectorySeparatorChar)).ToLower().StartsWith("tex_var") ? Path.GetFileName(texPath.Replace('/', Path.DirectorySeparatorChar)) : null;
+
+                        mScenePlayer.SceneInfo.Objects[chrIndex].Object = new GLObjectData(ObjectData.Load(path, texPath), GLShader.Default);
+
+                        // Reload physics (Spaghetti)
+                        if (mReloadPhysics)
+                        {
+                            mScenePlayer.SceneInfo.Objects[chrIndex].Motions[1].Motion = Motion.FromFile(Config.DataPath + "/" + "MOTIONS/" + mScenePlayer.Id + "_P" + mScenePlayer.SceneInfo.Objects[chrIndex].Object.PhysicsId.ToString() + ".bmm");
+                        }
+                    }
+
+                    ImGui.SameLine();
+                    ImGui.Checkbox("Reload Phys Motion", ref mReloadPhysics);
+                }*/
+
+                mController.Render();
+            }
 
             Context.SwapBuffers();
             base.OnRenderFrame(e);
         }
 
-        protected override void OnUpdateFrame(FrameEventArgs e)
-        {
-            if (!Focused) return;
-
-            if(mCurrentChosenTest != mPreviouslyChosenTest)
-            {
-                mCurrentTest?.Dispose();
-
-                if (mCurrentChosenTest == 0)
-                    mCurrentTest = new ObjectTest();
-                else if (mCurrentChosenTest == 1)
-                    mCurrentTest = new MotionTest();
-
-                // To force it to automatically reload the object
-                mOldSelectedIndex = -1;
-
-                mPreviouslyChosenTest = mCurrentChosenTest;
-            }
-
-            if(mSelectedIndex != mOldSelectedIndex)
-            {
-                if(mCurrentChosenTest == 0 || mCurrentChosenTest == 1)
-                    // a little trick
-                    mCurrentTest.Reload(mLoadableObjects[ mLoadableObjects.Keys.ToArray()[mSelectedIndex] ]);
-
-                mOldSelectedIndex = mSelectedIndex;
-            }
-
-            if(mCurrentChosenTest == 1)
-            {
-                if(mMotionSelectedIndex != mMotionOldSelectedIndex)
-                {
-                    mCurrentTest.Reload(mLoadableMotions[mLoadableMotions.Keys.ToArray()[mMotionSelectedIndex]], ReloadType.Motion);
-
-                    mMotionOldSelectedIndex = mMotionSelectedIndex;
-                }
-            }
-
-
-
-            mCurrentTest.Update();
-
-            /*
-
-            mCurrentFrame += 1;
-
-            if(mAnimIsPlaying)
-            {
-                if (mAnimFrameStart == -1)
-                    mAnimFrameStart = mCurrentFrame;
-
-                int currentFrame = mCurrentFrame - mAnimFrameStart;
-
-                Matrix4[] Transforms = new Matrix4[mMot.Bones.Count];
-                int boneIdx = 0;
-                foreach(MotionBone bone in mMot.Bones)
-                {
-                    for(int i = 0; i < bone.Keyframes.Length; i++)
-                    {
-                        if (bone.Keyframes[i].Frame > currentFrame)
-                            continue;
-                        else
-                        {
-                            Transforms[boneIdx] = Matrix4.CreateFromQuaternion(new Quaternion(bone.Keyframes[i].Rotation.X, bone.Keyframes[i].Rotation.Y, bone.Keyframes[i].Rotation.Z, bone.Keyframes[i].Rotation.W));
-                        }
-                    }
-
-                    boneIdx++;
-                }
-
-                mStageShader.Uniform("uBoneTransforms", Transforms);
-            }
-
-            */
-
-
-
-            KeyboardState state = Keyboard.GetState();
-
-            float speed = 1.0f;
-
-            if (state.IsKeyDown(Key.LControl))
-                speed = 0.3f;
-
-            if (state.IsKeyDown(Key.W) || state.IsKeyDown(Key.Up))
-                Camera.Position += new Vector3(0.0f, 0.0f, -0.1f) * speed;
-            if (state.IsKeyDown(Key.A) || state.IsKeyDown(Key.Left))
-                Camera.Position -= Vector3.Normalize(Vector3.Cross(new Vector3(0.0f, 0.0f, -0.1f), new Vector3(0.0f, 0.1f, 0.0f))) * 0.05f * speed;
-            if (state.IsKeyDown(Key.S) || state.IsKeyDown(Key.Down))
-                Camera.Position += new Vector3(0.0f, 0.0f, 0.1f) * speed;
-            if (state.IsKeyDown(Key.D) || state.IsKeyDown(Key.Right))
-                Camera.Position += Vector3.Normalize(Vector3.Cross(new Vector3(0.0f, 0.0f, -0.1f), new Vector3(0.0f, 0.1f, 0.0f))) * 0.05f * speed;
-            if (state.IsKeyDown(Key.Space))
-                Camera.Position += new Vector3(0.0f, 0.1f, 0.0f) * speed;
-            if (state.IsKeyDown(Key.LShift))
-            {
-                if (!state.IsKeyDown(Key.WinLeft))
-                    Camera.Position += new Vector3(0.0f, -0.1f, 0.0f) * speed;
-            }
-            if(state.IsKeyDown(Key.Period) && !lastState.IsKeyDown(Key.Period))
-            {
-                Console.Clear();
-                Console.WriteLine("Pick an id (1~30): ");
-                int id = MathHelper.Clamp(int.Parse(Console.ReadLine()), 1, 30);
-
-                mScenePlayer.Unload();
-                mScenePlayer = new Scene(id);
-            }
-            if (state.IsKeyDown(Key.Comma) && !isPressed)
-            {
-                GL.PolygonMode(MaterialFace.FrontAndBack, PolygonMode.Line);
-            }
-            if(state.IsKeyDown(Key.J))
-            {
-                Camera.Yaw += 1.0f;
-            }
-            if (state.IsKeyDown(Key.L))
-            {
-                Camera.Yaw -= 1.0f;
-            }
-            if(state.IsKeyDown(Key.F1) && !lastState.IsKeyDown(Key.F1))
-            {
-                /*if (Camera.Mode == CameraMode.FollowTarget)
-                    Camera.Mode = CameraMode.LockAtTarget;
-                else
-                    Camera.Mode = CameraMode.FollowTarget;*/
-
-                mScenePlayer.FlipPlayingState();
-            }
-            if(state.IsKeyDown(Key.F2) && !lastState.IsKeyDown(Key.F2))
-            {
-                mScenePlayer.Reset();
-            }
-
-            // FOV Controller
-            if (state.IsKeyDown(Key.I))
-                if (Camera.FieldOfViewAngle > 1.0f)
-                    Camera.FieldOfViewAngle -= 0.5f;
-            if (state.IsKeyDown(Key.K))
-                if (Camera.FieldOfViewAngle < 90.0f)
-                    Camera.FieldOfViewAngle += 0.5f;
-
-            mScenePlayer.Update();
-
-            lastState = state;
-
-            base.OnUpdateFrame(e);
-        }
-
         protected override void OnMouseMove(MouseMoveEventArgs e)
         {
-            MouseState state = Mouse.GetState();
-
-            if (!state.IsButtonDown(MouseButton.Right))
-                return;
-
-            if (mLastCursorPos == Vector2.Zero)
-                mLastCursorPos = new Vector2(state.X, state.Y);
-            else
-            {
-                Vector2 delta = new Vector2(state.X, state.Y) - mLastCursorPos;
-
-                Camera.Yaw += delta.X * Camera.Sensitivity;
-                Camera.Pitch += delta.Y * Camera.Sensitivity;
-            }
-
             base.OnMouseMove(e);
+        }
+
+        protected override void OnUnload(EventArgs e)
+        {
+            base.OnUnload(e);
         }
 
         protected override void OnResize(EventArgs e)

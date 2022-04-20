@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace MiguLibrary.Motions
 {
-    public class MotionBone
+    public struct MotionBone
     {
         public string Name;
         public int Index;

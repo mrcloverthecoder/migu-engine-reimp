@@ -5,7 +5,8 @@ using OpenTK.Input;
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using MiguModelViewer.Renderer;
+using MiguEngine;
+using MiguEngine.Textures;
 
 namespace MiguModelViewer.UI
 {
@@ -23,8 +24,8 @@ namespace MiguModelViewer.UI
         private int _indexBuffer;
         private int _indexBufferSize;
 
-        private GLTexture _fontTexture;
-        private GLShader _shader;
+        private Texture _fontTexture;
+        private Shader _shader;
         
         private int _windowWidth;
         private int _windowHeight;
@@ -125,7 +126,7 @@ void main()
 {
     outputColor = color * texture(in_fontTexture, texCoord);
 }";
-            _shader = new GLShader(VertexSource, FragmentSource);
+            _shader = new Shader(VertexSource, FragmentSource);
 
             GL.BindVertexArray(_vertexArray);
 
@@ -160,7 +161,7 @@ void main()
             if (_fontTexture != null)
                 _fontTexture.Dispose();
 
-            _fontTexture = new GLTexture(width, height, pixels);
+            _fontTexture = new Texture(width, height, pixels);
             
             io.Fonts.SetTexID((IntPtr)_fontTexture.Id);
 
@@ -180,8 +181,6 @@ void main()
                 _frameBegun = false;
                 ImGui.Render();
                 RenderImDrawData(ImGui.GetDrawData());
-
-                //Console.WriteLine($"Imgui Controller: {GL.GetError()}");
             }
         }
 
@@ -308,8 +307,6 @@ void main()
                 GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
 
                 _vertexBufferSize = newSize;
-
-                Console.WriteLine($"Resized vertex buffer to new size {_vertexBufferSize}");
             }
 
             uint totalIBSize = (uint)(draw_data.TotalIdxCount * sizeof(ushort));
@@ -322,8 +319,6 @@ void main()
                 GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
 
                 _indexBufferSize = newSize;
-
-                Console.WriteLine($"Resized index buffer to new size {_indexBufferSize}");
             }
 
 

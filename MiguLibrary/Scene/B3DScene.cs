@@ -14,7 +14,11 @@ namespace MiguLibrary.Scene
     public class B3DScene
     {
         public Vector4 BackgroundColor;
+        public int EndFrame;
         public ObjectEntry[] Entries;
+
+        public string CameraName;
+        public SceneAnimationCut[] CameraCuts;
 
         public Entry ReadEntry(EndianBinaryReader reader)
         {
@@ -22,18 +26,13 @@ namespace MiguLibrary.Scene
 
             entry.Name = reader.ReadString(StringBinaryFormat.FixedLength, 0x40).ToUpper();
 
-            // Trick to gather the actual path as its stored weirdly in the bsx
+            // Seek two bytes foward to remove the starting >\ from the string
             reader.SeekCurrent(0x02);
-            string pathBase = reader.ReadString(StringBinaryFormat.NullTerminated);
-            string filename = reader.ReadString(StringBinaryFormat.NullTerminated);
-
-            entry.Path = (pathBase + Path.GetFileName(filename)).Replace("\\", "/").ToUpper();
-
-            int totalLength = pathBase.Length + filename.Length + 0x04;
-            reader.SeekCurrent(0x80 - totalLength);
-            Console.WriteLine($"BSX pos 2: {reader.Position}");
+            string pathBase = reader.ReadString(StringBinaryFormat.FixedLength, 0x80 - 0x02);
 
             entry.Filename = reader.ReadString(StringBinaryFormat.FixedLength, 0x40).ToUpper();
+
+            entry.Path = (pathBase + entry.Filename).Replace("\\", "/").ToUpper();
 
             return entry;
         }
@@ -46,6 +45,7 @@ namespace MiguLibrary.Scene
             reader.SeekBegin(0x40);
 
             BackgroundColor = reader.ReadColor(ColorFormat.BGRA).AsVector4();
+            EndFrame = reader.ReadInt32();
 
             reader.SeekBegin(0x150);
 
@@ -65,25 +65,28 @@ namespace MiguLibrary.Scene
 
                 int animationCutCount = reader.ReadInt32();
 
-                Console.WriteLine("AAA");
-                Console.WriteLine(reader.Position);
-                Console.WriteLine(animationCutCount);
-
                 entry.Cuts = new SceneAnimationCut[animationCutCount];
                 for(int j = 0; j < animationCutCount; j++)
                 {
-                    Console.WriteLine("Anim cut read");
                     entry.Cuts[j] = SceneAnimationCut.Read(reader);
                 }
 
                 int motionCount = reader.ReadInt32();
 
-                entry.Motions = new Entry[motionCount];
+                entry.Motions = new MotionFileEntry[motionCount];
                 for(int j = 0; j < motionCount; j++)
                 {
-                    entry.Motions[j] = ReadEntry(reader);
-                    //reader.SeekCurrent(0x58);
-                    reader.SeekCurrent(0x44);
+                    Entry e = ReadEntry(reader);
+                    entry.Motions[j] = new MotionFileEntry();
+                    entry.Motions[j].Name = e.Name;
+                    entry.Motions[j].Filename = e.Filename;
+                    entry.Motions[j].Path = e.Path;
+
+                    entry.Motions[j].Duration = reader.ReadInt32();
+                    reader.SeekCurrent(4);
+                    entry.Motions[j].Type = (MotionType)reader.ReadInt32();
+
+                    reader.SeekCurrent(0x38);
 
                     int motionSubstructCount = reader.ReadInt32();
                     entry.Motions[j].FrameSettings = new FrameSetting[motionSubstructCount];
@@ -93,14 +96,35 @@ namespace MiguLibrary.Scene
                         entry.Motions[j].FrameSettings[k].Field0 = reader.ReadInt32();
                         entry.Motions[j].FrameSettings[k].PlayCount = reader.ReadInt32();
                         entry.Motions[j].FrameSettings[k].Field8 = reader.ReadInt32();
-                        entry.Motions[j].FrameSettings[k].Duration = reader.ReadInt32();
+                        entry.Motions[j].FrameSettings[k].EndFrame = reader.ReadInt32();
                     }
                 }
 
                 Entries[i] = entry;
             }
 
-            Console.WriteLine($"BSX POS: {reader.Position}");
+            // If everything is alright we should now be where the camera data is located
+            // Unk
+            reader.SeekCurrent(0x04);
+            // Camera count
+            int camCount = reader.ReadInt32();
+
+            // This only supports one camera
+            // The way it's read if theres more than 1 camera the last camera will overlap all of the previous
+
+            // First ensure CameraCuts is not null if there are no cameras
+            CameraCuts = new SceneAnimationCut[0];
+
+            // Now read the data
+            for(int cam = 0; cam < camCount; cam++)
+            {
+                CameraName = reader.ReadString(StringBinaryFormat.FixedLength, 0x40);
+
+                int camCutCount = reader.ReadInt32();
+                CameraCuts = new SceneAnimationCut[camCutCount];
+                for (int i = 0; i < camCutCount; i++)
+                    CameraCuts[i] = SceneAnimationCut.Read(reader);
+            }
         }
 
         public static B3DScene FromFile(string path)
@@ -120,7 +144,7 @@ namespace MiguLibrary.Scene
     {
         public Entry FileEntry;
         public SceneAnimationCut[] Cuts;
-        public Entry[] Motions;
+        public MotionFileEntry[] Motions;
     }
 
     public struct Entry
@@ -128,14 +152,31 @@ namespace MiguLibrary.Scene
         public string Name;
         public string Path;
         public string Filename;
+    }
+
+    public struct MotionFileEntry
+    {
+        public string Name;
+        public string Path;
+        public string Filename;
+        public int Duration;
+        public MotionType Type;
         public FrameSetting[] FrameSettings;
+    }
+
+    public enum MotionType
+    {
+        Object,
+        Body,
+        Physics
     }
 
     public struct FrameSetting
     {
         public int Field0;
+        // How many times to play the motion/loop
         public int PlayCount;
         public int Field8;
-        public int Duration;
+        public int EndFrame;
     }
 }

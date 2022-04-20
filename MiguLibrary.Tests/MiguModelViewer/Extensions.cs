@@ -27,7 +27,12 @@ namespace MiguModelViewer
         public static Matrix4 ToGL (this Sn.Matrix4x4 m)
         {
             return new Matrix4(m.M11, m.M12, m.M13, m.M14, m.M21, m.M22, m.M23, m.M24, m.M31, m.M32, m.M33, m.M34, m.M41, m.M42, m.M43, m.M44);
-        } 
+        }
+
+        public static Vector2 ToGL(this Sn.Vector2 v)
+        {
+            return new Vector2(v.X, v.Y);
+        }
 
         public static Vector3 ToGL(this Sn.Vector3 v)
         {
